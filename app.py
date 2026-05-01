@@ -76,6 +76,34 @@ def inject_premium_design():
 
 inject_premium_design()
 
+# --- Login Protection ---
+def check_login():
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1.2, 1])
+        with col2:
+            st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🔐 Studio Pro Login</h2>", unsafe_allow_html=True)
+            st.caption("전용 계정으로 로그인해 주세요.")
+            with st.form("login_form"):
+                user_id = st.text_input("아이디 (ID)", placeholder="ID")
+                user_pw = st.text_input("비밀번호 (Password)", type="password", placeholder="Password")
+                submit = st.form_submit_button("로그인", use_container_width=True)
+                
+                if submit:
+                    if user_id == "oje" and user_pw == "calzone2":
+                        st.session_state.authenticated = True
+                        st.success("✅ 로그인 성공!")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error("❌ 정보가 일치하지 않습니다.")
+        st.stop()
+
+check_login()
+
 # --- API Key Management (Cloud-ready) ---
 if "gemini_api_key" not in st.session_state:
     # 1. Try Streamlit Secrets (for Cloud)
