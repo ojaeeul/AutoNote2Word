@@ -1,0 +1,11 @@
+streamlit==1.32.0
+google-generativeai
+openai
+pymupdf
+python-docx
+pillow
+matplotlib
+numpy
+pypandoc
+scipy
+pyhwp
