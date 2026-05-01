@@ -2,6 +2,7 @@ import datetime
 import re
 import streamlit as st
 import time
+import os
 import openai  # ChatGPT 통합을 위한 라이브러리 추가
 
 # --- Premium UI/UX Design System Injection ---
