@@ -612,7 +612,7 @@ def load_state():
 
 def save_state():
     state_to_save = {}
-    for k in ["notion_db", "latex_code", "mathlive_init", "menu_selection", "global_smart_img_result", "global_smart_img_name", "analysis_buffer", "curent_file_hash", "smart_analysis_result", "hw_analysis_buffer", "hw_curent_file_hash", "smart_analysis_active", "smart_page_map", "smart_file_paths", "last_report_result", "last_report_query", "last_report_safe_word", "last_report_safe_name", "last_report_hq_word", "last_report_hq_name", "ex_label_1", "ex_label_2", "ex_label_3", "ex_label_4", "report_search_query", "report_trash_bin"]:
+    for k in ["notion_db", "latex_code", "mathlive_init", "menu_selection", "global_smart_img_result", "global_smart_img_name", "analysis_buffer", "curent_file_hash", "smart_analysis_result", "hw_analysis_buffer", "hw_curent_file_hash", "smart_analysis_active", "smart_page_map", "smart_file_paths", "last_report_result", "last_report_query", "last_report_safe_word", "last_report_safe_name", "last_report_hq_word", "last_report_hq_name", "ex_label_1", "ex_label_2", "ex_label_3", "ex_label_4", "report_search_query", "global_trash_bin"]:
         if k in st.session_state:
             state_to_save[k] = st.session_state[k]
     try:
@@ -633,8 +633,8 @@ def save_state():
 if "pending_tasks" not in st.session_state:
     st.session_state.pending_tasks = []
 
-if "report_trash_bin" not in st.session_state:
-    st.session_state.report_trash_bin = []
+if "global_trash_bin" not in st.session_state:
+    st.session_state.global_trash_bin = st.session_state.get("report_trash_bin", [])
 
 if "cell_text_key_counter" not in st.session_state:
     st.session_state.cell_text_key_counter = 0
@@ -1652,6 +1652,24 @@ with st.sidebar:
     )
 
     st.markdown("---")
+    if st.session_state.get("global_trash_bin"):
+        st.subheader("🗑️ 통합 휴지통")
+        with st.expander(f"최근 삭제 항목 ({len(st.session_state.global_trash_bin)}/5)", expanded=False):
+            for i, item in enumerate(st.session_state.global_trash_bin):
+                st.markdown(f"**[{i+1}] {item.get('type', '항목')}**")
+                st.caption(f"{item['query']} ({item['time']})")
+                
+                # 복구 버튼
+                if st.button("♻️ 이 항목 복구하기", key=f"global_restore_{i}", use_container_width=True):
+                    if item.get("type") == "보고서":
+                        st.session_state.last_report_result = item['content']
+                        st.session_state.last_report_query = item['query']
+                        # 메뉴를 보고서 쪽으로 강제 이동
+                        st.session_state["menu_selection"] = "💬 실시간 AI 학술 상담 (ChatGPT 스타일)"
+                    # 향후 다른 타입도 여기서 분기 처리 가능
+                    st.rerun()
+                st.divider()
+
     st.caption("v2.5.0 Professional Edition")
 
 # 과제 샘플 데이터 (TOP 5)
@@ -2628,32 +2646,18 @@ elif menu == "🔬 실험 보고서 AI 도우미":
         if st.session_state.get("last_report_result"):
             import datetime
             trash_item = {
+                "type": "보고서",
                 "query": st.session_state.get("last_report_query", "제목 없음"),
                 "content": st.session_state.last_report_result,
                 "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            st.session_state.report_trash_bin.insert(0, trash_item)
+            st.session_state.global_trash_bin.insert(0, trash_item)
             # 최대 5개까지만 보관
-            st.session_state.report_trash_bin = st.session_state.report_trash_bin[:5]
+            st.session_state.global_trash_bin = st.session_state.global_trash_bin[:5]
             
         st.session_state.last_report_result = None
         st.session_state.last_report_query = None
         st.rerun()
-
-    if st.session_state.get("report_trash_bin"):
-        with st.expander(f"🗑️ 휴지통 (최근 삭제된 보고서 5개 보관 중: {len(st.session_state.report_trash_bin)}개)", expanded=False):
-            for i, item in enumerate(st.session_state.report_trash_bin):
-                st.markdown(f"**[{i+1}] {item['query']}** ({item['time']})")
-                cols = st.columns([4, 1])
-                with cols[0]:
-                    with st.expander("내용 미리보기"):
-                        st.markdown(item['content'][:500] + "...")
-                with cols[1]:
-                    if st.button("복구하기 ♻️", key=f"restore_trash_{i}"):
-                        st.session_state.last_report_result = item['content']
-                        st.session_state.last_report_query = item['query']
-                        st.rerun()
-                st.divider()
 
     if search_btn:
         if not api_key:
