@@ -3430,16 +3430,26 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     }
                     """
                     
-                    try:
-                        model = get_safe_gemini_model(use_grounding=False)
-                        response = model.generate_content([prompt, img])
-                    except Exception as e_model:
-                        if "429" in str(e_model) or "quota" in str(e_model).lower():
-                            # 2.0-flash 등의 최신 모델에서 무료 할당량(Quota) 초과 에러 발생 시 1.5-flash로 우회
-                            model = genai.GenerativeModel('models/gemini-1.5-flash')
+                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    response = None
+                    last_error = None
+                    
+                    # 선호하는 비전 모델 우선 배치 (빠른 처리 속도 우선)
+                    preferred = [m for m in available_models if '1.5-flash' in m or '2.0-flash' in m]
+                    others = [m for m in available_models if m not in preferred]
+                    target_models = preferred + others
+                    
+                    for m_name in target_models:
+                        try:
+                            model = genai.GenerativeModel(m_name)
                             response = model.generate_content([prompt, img])
-                        else:
-                            raise e_model
+                            break # 성공 시 루프 탈출
+                        except Exception as e_model:
+                            last_error = e_model
+                            continue
+                            
+                    if not response:
+                        raise Exception(f"무료 할당량(Quota)이 완전히 소진되었거나 접근 가능한 모델이 없습니다. (마지막 에러: {last_error})")
                     
                     res_text = response.text.strip()
                     if res_text.startswith("```json"):
