@@ -6,6 +6,6 @@ python-docx
 pillow
 matplotlib
 numpy
-pypandoc
+pypandoc_binary
 scipy
 pandas
