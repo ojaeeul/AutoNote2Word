@@ -3439,7 +3439,8 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     {
                         "category": "<one of the 6 categories above>",
                         "reasoning": "<short explanation>",
-                        "parameters": { ... }
+                        "parameters": { ... },
+                        "crop_boxes": [ [ymin, xmin, ymax, xmax], ... ] // If the image contains MULTIPLE independent molecules/diagrams that should be separated, provide a list of bounding boxes for each object. Values MUST be normalized between 0 and 1000. If there is only one object, leave it empty [].
                     }
                     """
                     
@@ -3476,57 +3477,84 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     cat = data["category"]
                     params = data["parameters"]
                     
-                    img_stream = None
+                    img_streams = []
                     errors = []
+                    crop_boxes = data.get("crop_boxes", [])
                     
-                    if "3D 격자" in cat:
-                        img_stream, errors = draw_unit_cell(params.get("cell_type", "Face-Centered (FCC)"), params.get("lattice_size", 1), params.get("atom_rad", 0.18))
-                    elif "양자역학" in cat:
-                        img_stream, errors = draw_quantum_graph(params.get("graph_type", "1D Box 파동함수 (n=1,2,3)"))
-                    elif "루이스" in cat:
-                        img_stream, errors = draw_lewis_structure(params.get("molecule", "O2"))
-                    elif "오비탈" in cat:
-                        img_stream, errors = draw_orbital_diagram(params.get("molecule_type", "에텐 (C2H4)"))
-                    elif "기하 도형" in cat or "기본 도식" in cat:
-                        img_stream, errors = draw_schematic(params.get("shape_type", "정사면체 (Tetrahedral)"))
-                    elif "2D 분자" in cat or "선구조식" in cat:
-                        molecule_name = str(params.get("molecule", ""))
-                        supported = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
-                        matched = next((s for s in supported if molecule_name.lower() in s.lower() or s.lower() in molecule_name.lower()), None)
-                        
-                        if matched:
-                            img_stream, errors = draw_skeletal_structure(matched)
-                        else:
-                            # 지원하지 않는 복잡한 분자는 원본 이미지를 그대로 복사해서 삽입
+                    if len(crop_boxes) > 1:
+                        # 여러 독립된 개체가 발견된 경우, 원본 이미지를 여러 개로 분할 복사
+                        w, h = img.size
+                        for box in crop_boxes:
+                            if len(box) == 4:
+                                ymin, xmin, ymax, xmax = box
+                                left = max(0, (xmin / 1000.0) * w)
+                                right = min(w, (xmax / 1000.0) * w)
+                                top = max(0, (ymin / 1000.0) * h)
+                                bottom = min(h, (ymax / 1000.0) * h)
+                                
+                                # 여백(Padding) 5% 추가
+                                pw, ph = right - left, bottom - top
+                                left = max(0, left - pw * 0.05)
+                                right = min(w, right + pw * 0.05)
+                                top = max(0, top - ph * 0.05)
+                                bottom = min(h, bottom + ph * 0.05)
+                                
+                                cropped = img.crop((left, top, right, bottom))
+                                stream = io.BytesIO()
+                                cropped.save(stream, format='PNG')
+                                img_streams.append(stream)
+                    else:
+                        img_stream = None
+                        if "3D 격자" in cat:
+                            img_stream, errors = draw_unit_cell(params.get("cell_type", "Face-Centered (FCC)"), params.get("lattice_size", 1), params.get("atom_rad", 0.18))
+                        elif "양자역학" in cat:
+                            img_stream, errors = draw_quantum_graph(params.get("graph_type", "1D Box 파동함수 (n=1,2,3)"))
+                        elif "루이스" in cat:
+                            img_stream, errors = draw_lewis_structure(params.get("molecule", "O2"))
+                        elif "오비탈" in cat:
+                            img_stream, errors = draw_orbital_diagram(params.get("molecule_type", "에텐 (C2H4)"))
+                        elif "기하 도형" in cat or "기본 도식" in cat:
+                            img_stream, errors = draw_schematic(params.get("shape_type", "정사면체 (Tetrahedral)"))
+                        elif "2D 분자" in cat or "선구조식" in cat:
+                            molecule_name = str(params.get("molecule", ""))
+                            supported = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
+                            matched = next((s for s in supported if molecule_name.lower() in s.lower() or s.lower() in molecule_name.lower()), None)
+                            
+                            if matched:
+                                img_stream, errors = draw_skeletal_structure(matched)
+                            else:
+                                img_stream = io.BytesIO()
+                                img.save(img_stream, format='PNG')
+                        elif "표" in cat or "그래프" in cat or "기타" in cat:
                             img_stream = io.BytesIO()
                             img.save(img_stream, format='PNG')
-                    elif "표" in cat or "그래프" in cat or "기타" in cat:
-                        # 표나 기타 그래프는 원본 이미지를 복사해서 삽입
-                        img_stream = io.BytesIO()
-                        img.save(img_stream, format='PNG')
-                    else:
-                        # 알 수 없는 경우에도 사용자 요청에 따라 원본 복사 삽입
-                        img_stream = io.BytesIO()
-                        img.save(img_stream, format='PNG')
-                        
+                        else:
+                            img_stream = io.BytesIO()
+                            img.save(img_stream, format='PNG')
+                            
+                        if img_stream:
+                            img_streams.append(img_stream)
+                            
                     if errors:
                         for e in errors: st.error(e)
                     
-                    if img_stream:
-                        img_stream.seek(0)
-                        st.image(img_stream)
-                        
-                        img_stream.seek(0)
-                        st.session_state.vision_history.append({
-                            "category": data['category'],
-                            "reasoning": data['reasoning'],
-                            "image": img_stream.getvalue()
-                        })
-                        
-                        img_stream.seek(0)
+                    if img_streams:
                         from docx.shared import Inches
-                        st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                        st.success("📝 MS Word 파일에 이미지가 성공적으로 추가되었습니다! 아래 버튼을 눌러 바로 다운로드하세요.")
+                        for stream in img_streams:
+                            stream.seek(0)
+                            st.image(stream)
+                            
+                            stream.seek(0)
+                            st.session_state.vision_history.append({
+                                "category": data['category'] + (" (분할 크롭)" if len(img_streams)>1 else ""),
+                                "reasoning": data['reasoning'],
+                                "image": stream.getvalue()
+                            })
+                            
+                            stream.seek(0)
+                            st.session_state.word_doc.add_picture(stream, width=Inches(4.0))
+                            
+                        st.success(f"📝 MS Word 파일에 {len(img_streams)}개의 이미지가 성공적으로 추가되었습니다! 아래 버튼을 눌러 바로 다운로드하세요.")
                         
                         import time
                         doc_stream = io.BytesIO()
