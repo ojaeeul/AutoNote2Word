@@ -6,5 +6,4 @@ python-docx
 pillow
 matplotlib
 numpy
-scipy
 pandas

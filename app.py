@@ -2284,8 +2284,6 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
                             data_groups = [[y[i] for i in range(len(x)) if x[i] == ux] for ux in unique_x]
                             ax.boxplot(data_groups, labels=unique_x, patch_artist=True, boxprops=dict(facecolor=g_color, color='black', alpha=0.7), medianprops=dict(color='#EF4444', linewidth=2))
                         elif "적정 곡선" in g_type:
-                            from scipy.interpolate import make_interp_spline
-
                             # X 정렬 및 중복 X값 처리 (평균값 적용)
                             unique_xy = {}
                             for px, py in sorted(zip(x, y), key=lambda p: p[0]):
@@ -2298,11 +2296,11 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
                             y_sorted = [np.mean(unique_xy[px]) for px in x_sorted]
 
                             if len(x_sorted) < 2:
-                                st.error("적정 곡선(Spline)을 그리려면 고유한 X값이 최소 2개 이상 필요합니다.")
+                                st.error("적정 곡선을 그리려면 고유한 X값이 최소 2개 이상 필요합니다.")
                             else:
+                                p = np.poly1d(np.polyfit(x_sorted, y_sorted, min(3, len(x_sorted)-1)))
                                 x_new = np.linspace(min(x_sorted), max(x_sorted), 300)
-                                spl = make_interp_spline(x_sorted, y_sorted, k=min(3, len(x_sorted)-1))
-                                y_new = spl(x_new)
+                                y_new = p(x_new)
                                 ax.plot(x_new, y_new, color=g_color, lw=3)
                                 ax.scatter(x_sorted, y_sorted, color='#EF4444', s=40, zorder=5, label='Data')
                                 ax.legend()
