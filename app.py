@@ -3498,7 +3498,17 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         if match:
                             res_text = match.group(0)
                             
-                        data = json.loads(res_text)
+                        try:
+                            data = json.loads(res_text)
+                        except Exception:
+                            # AI가 JSON 포맷을 어기거나 파싱 실패 시 원본 강제 보존
+                            data = {
+                                "category": "알 수 없음 (분석 실패)",
+                                "reasoning": "AI가 이미지 형식을 분석하지 못해 원본을 보존합니다.",
+                                "parameters": {},
+                                "has_complex_annotations": True,
+                                "crop_boxes": []
+                            }
                         
                     st.success(f"✅ AI 판독 완료: {data['category']} ({data['reasoning']})")
                     
@@ -3553,12 +3563,18 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                                 top = max(0, (ymin / 1000.0) * h)
                                 bottom = min(h, (ymax / 1000.0) * h)
                                 
-                                # 여백(Padding) 5% 추가
-                                pw, ph = right - left, bottom - top
-                                left = int(max(0, left - pw * 0.05))
-                                right = int(min(w, right + pw * 0.05))
-                                top = int(max(0, top - ph * 0.05))
-                                bottom = int(min(h, bottom + ph * 0.05))
+                                # 수동 분할은 정확히 자르고, AI 분할은 여백 5% 추가
+                                if split_mode == "AI 자동 판단":
+                                    pw, ph = right - left, bottom - top
+                                    left = int(max(0, left - pw * 0.05))
+                                    right = int(min(w, right + pw * 0.05))
+                                    top = int(max(0, top - ph * 0.05))
+                                    bottom = int(min(h, bottom + ph * 0.05))
+                                else:
+                                    left = int(left)
+                                    right = int(right)
+                                    top = int(top)
+                                    bottom = int(bottom)
                                 
                                 # 좌우/상하 역전 방지
                                 if right <= left: right = left + 1
