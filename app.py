@@ -3440,7 +3440,8 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         "category": "<one of the 6 categories above>",
                         "reasoning": "<short explanation>",
                         "parameters": { ... },
-                        "crop_boxes": [ [ymin, xmin, ymax, xmax], ... ] // If the image contains MULTIPLE independent molecules/diagrams that should be separated, provide a list of bounding boxes for each object. Values MUST be normalized between 0 and 1000. If there is only one object, leave it empty [].
+                        "crop_boxes": [ [ymin, xmin, ymax, xmax], ... ], // If the image contains MULTIPLE independent molecules/diagrams that should be separated, provide a list of bounding boxes for each object. Values MUST be normalized between 0 and 1000. If there is only one object, leave it empty [].
+                        "can_recreate_perfectly": true // Set to false if the image contains custom arrows, complex text labels (like 'Nearest', '2nd Near'), or custom structures that cannot be perfectly recreated using ONLY the simple predefined parameters allowed above.
                     }
                     """
                     
@@ -3481,7 +3482,17 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     errors = []
                     crop_boxes = data.get("crop_boxes", [])
                     
-                    if len(crop_boxes) > 1:
+                    if not data.get("can_recreate_perfectly", True):
+                        # AI가 화살표나 복잡한 텍스트 기호가 있어서 파이썬 코드로 완벽 복원이 불가능하다고 판단한 경우 -> 원본 복사
+                        img_stream = io.BytesIO()
+                        img.save(img_stream, format='PNG')
+                        img_streams.append(img_stream)
+                        # 만약 복원이 불가능한데 여러 개체라면, 원본 분할 복사를 위해 아래 조건문을 타도록 수정
+                        if len(crop_boxes) > 1:
+                            img_streams = [] # 초기화하고 아래 분할 로직으로 넘어감
+                            pass 
+                        
+                    if len(crop_boxes) > 1 and not img_streams:
                         # 여러 독립된 개체가 발견된 경우, 원본 이미지를 여러 개로 분할 복사
                         w, h = img.size
                         for box in crop_boxes:
@@ -3503,7 +3514,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                                 stream = io.BytesIO()
                                 cropped.save(stream, format='PNG')
                                 img_streams.append(stream)
-                    else:
+                    if not img_streams:
                         img_stream = None
                         if "3D 격자" in cat:
                             img_stream, errors = draw_unit_cell(params.get("cell_type", "Face-Centered (FCC)"), params.get("lattice_size", 1), params.get("atom_rad", 0.18))
