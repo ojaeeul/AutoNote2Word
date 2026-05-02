@@ -612,7 +612,7 @@ def load_state():
 
 def save_state():
     state_to_save = {}
-    for k in ["notion_db", "latex_code", "mathlive_init", "menu_selection", "global_smart_img_result", "global_smart_img_name", "analysis_buffer", "curent_file_hash", "smart_analysis_result", "hw_analysis_buffer", "hw_curent_file_hash", "smart_analysis_active", "smart_page_map", "smart_file_paths", "last_report_result", "last_report_query", "last_report_safe_word", "last_report_safe_name", "last_report_hq_word", "last_report_hq_name", "ex_label_1", "ex_label_2", "ex_label_3", "ex_label_4", "report_search_query"]:
+    for k in ["notion_db", "latex_code", "mathlive_init", "menu_selection", "global_smart_img_result", "global_smart_img_name", "analysis_buffer", "curent_file_hash", "smart_analysis_result", "hw_analysis_buffer", "hw_curent_file_hash", "smart_analysis_active", "smart_page_map", "smart_file_paths", "last_report_result", "last_report_query", "last_report_safe_word", "last_report_safe_name", "last_report_hq_word", "last_report_hq_name", "ex_label_1", "ex_label_2", "ex_label_3", "ex_label_4", "report_search_query", "report_trash_bin"]:
         if k in st.session_state:
             state_to_save[k] = st.session_state[k]
     try:
@@ -632,6 +632,9 @@ def save_state():
 # --- 백그라운드 분석 관리 시스템 ---
 if "pending_tasks" not in st.session_state:
     st.session_state.pending_tasks = []
+
+if "report_trash_bin" not in st.session_state:
+    st.session_state.report_trash_bin = []
 
 if "cell_text_key_counter" not in st.session_state:
     st.session_state.cell_text_key_counter = 0
@@ -2619,12 +2622,38 @@ elif menu == "🔬 실험 보고서 AI 도우미":
     with col1:
         search_btn = st.button("🚀 AI로 보고서 예시/구조 검색하기", use_container_width=True)
     with col2:
-        reset_btn = st.button("🗑️ AI 분석 보고서 초기화", use_container_width=True)
+        reset_btn = st.button("🗑️ 보고서 휴지통으로 이동", use_container_width=True)
 
     if reset_btn:
+        if st.session_state.get("last_report_result"):
+            import datetime
+            trash_item = {
+                "query": st.session_state.get("last_report_query", "제목 없음"),
+                "content": st.session_state.last_report_result,
+                "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            st.session_state.report_trash_bin.insert(0, trash_item)
+            # 최대 5개까지만 보관
+            st.session_state.report_trash_bin = st.session_state.report_trash_bin[:5]
+            
         st.session_state.last_report_result = None
         st.session_state.last_report_query = None
         st.rerun()
+
+    if st.session_state.get("report_trash_bin"):
+        with st.expander(f"🗑️ 휴지통 (최근 삭제된 보고서 5개 보관 중: {len(st.session_state.report_trash_bin)}개)", expanded=False):
+            for i, item in enumerate(st.session_state.report_trash_bin):
+                st.markdown(f"**[{i+1}] {item['query']}** ({item['time']})")
+                cols = st.columns([4, 1])
+                with cols[0]:
+                    with st.expander("내용 미리보기"):
+                        st.markdown(item['content'][:500] + "...")
+                with cols[1]:
+                    if st.button("복구하기 ♻️", key=f"restore_trash_{i}"):
+                        st.session_state.last_report_result = item['content']
+                        st.session_state.last_report_query = item['query']
+                        st.rerun()
+                st.divider()
 
     if search_btn:
         if not api_key:
