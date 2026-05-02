@@ -2996,8 +2996,13 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
             try:
                 import os, time
                 out_file = f"LaTeX_Export_{int(time.time())}.docx"
-                # 줄바꿈 유지 및 제어 문자 제거 (수식이 예쁘게 감싸진 render_text를 넘겨야 Pandoc이 수식으로 인식함)
-                clean_latex = "".join(c for c in render_text if c.isprintable() or c in "\n\r\t")
+                # 줄바꿈 유지 및 제어 문자 제거
+                clean_latex = "".join(c for c in user_latex if c.isprintable() or c in "\n\r\t").strip()
+                # 워드 변환(Pandoc) 엔진도 수식을 인식하려면 $$가 필요함 (미리보기 화면과 동일한 보정 적용)
+                if "$$" not in clean_latex and len(clean_latex) > 0:
+                    parts = clean_latex.split("$")
+                    clean_latex = "\n\n".join([f"$$ {p.strip()} $$" for p in parts if p.strip()])
+                    
                 convert_latex_to_word_docx(clean_latex, out_file, {'top': 2.0, 'bottom': 2.0, 'left': 2.5, 'right': 2.5})
                 
                 if os.path.exists(out_file):
