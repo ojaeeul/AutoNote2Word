@@ -3440,8 +3440,8 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         "category": "<one of the 6 categories above>",
                         "reasoning": "<short explanation>",
                         "parameters": { ... },
-                        "crop_boxes": [ [ymin, xmin, ymax, xmax], ... ], // If the image contains MULTIPLE independent molecules/diagrams that should be separated, provide a list of bounding boxes for each object. Values MUST be normalized between 0 and 1000. If there is only one object, leave it empty [].
-                        "can_recreate_perfectly": true // Set to false if the image contains custom arrows, complex text labels (like 'Nearest', '2nd Near'), or custom structures that cannot be perfectly recreated using ONLY the simple predefined parameters allowed above.
+                        "crop_boxes": [ [ymin, xmin, ymax, xmax], ... ], // MUST use this if the image contains MULTIPLE independent molecules or diagrams side-by-side (e.g., 3 different lattice drawings). Provide a list of bounding boxes for EACH object. Values MUST be normalized between 0 and 1000. If there is only one single diagram, leave it empty [].
+                        "has_complex_annotations": false // MUST BE TRUE if the image contains any custom arrows, distance labels (e.g., r_0), descriptive text (e.g., 'Nearest'), or custom structures. If TRUE, the system will preserve the original image.
                     }
                     """
                     
@@ -3482,7 +3482,12 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     errors = []
                     crop_boxes = data.get("crop_boxes", [])
                     
+                    is_complex = data.get("has_complex_annotations", False)
+                    # "can_recreate_perfectly"가 남아있을 수 있으니 하위 호환성 체크
                     if not data.get("can_recreate_perfectly", True):
+                        is_complex = True
+                        
+                    if is_complex:
                         # AI가 화살표나 복잡한 텍스트 기호가 있어서 파이썬 코드로 완벽 복원이 불가능하다고 판단한 경우 -> 원본 복사
                         img_stream = io.BytesIO()
                         img.save(img_stream, format='PNG')
