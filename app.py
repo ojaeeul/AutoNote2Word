@@ -3399,6 +3399,24 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 st.image(item['image'])
     
     vision_upload = st.file_uploader("이미지 또는 PDF 파일 업로드", type=["png", "jpg", "jpeg", "pdf"], key="vision_uploader_unified")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        split_mode = st.radio("✂️ 원본 수동 분할 옵션", ["AI 자동 판단", "가로 균등 분할", "가로+세로 격자 분할", "원본 그대로 보존"], index=0, horizontal=False)
+    with col2:
+        if split_mode == "가로 균등 분할":
+            split_cols = st.number_input("몇 등분 할까요?", min_value=2, max_value=10, value=3)
+            split_rows = 1
+        elif split_mode == "가로+세로 격자 분할":
+            subcol1, subcol2 = st.columns(2)
+            with subcol1:
+                split_cols = st.number_input("가로 등분", min_value=1, max_value=10, value=4)
+            with subcol2:
+                split_rows = st.number_input("세로 등분", min_value=1, max_value=10, value=4)
+        else:
+            split_cols = 1
+            split_rows = 1
+            
     if vision_upload and st.button("🚀 AI 분석 및 워드에 자동 복원", use_container_width=True):
         if not st.session_state.get("gemini_api_key"):
             st.error("Gemini API 키가 필요합니다. 왼쪽 사이드바 하단에 키를 입력해주세요.")
@@ -3480,6 +3498,24 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     
                     img_streams = []
                     errors = []
+                    if split_mode == "가로 균등 분할":
+                        data["has_complex_annotations"] = True
+                        data["crop_boxes"] = []
+                        step = 1000.0 / split_cols
+                        for i in range(split_cols):
+                            data["crop_boxes"].append([0, i*step, 1000.0, (i+1)*step])
+                    elif split_mode == "가로+세로 격자 분할":
+                        data["has_complex_annotations"] = True
+                        data["crop_boxes"] = []
+                        step_x = 1000.0 / split_cols
+                        step_y = 1000.0 / split_rows
+                        for j in range(split_rows):
+                            for i in range(split_cols):
+                                data["crop_boxes"].append([j*step_y, i*step_x, (j+1)*step_y, (i+1)*step_x])
+                    elif split_mode == "원본 그대로 보존":
+                        data["has_complex_annotations"] = True
+                        data["crop_boxes"] = []
+                        
                     crop_boxes = data.get("crop_boxes", [])
                     
                     is_complex = data.get("has_complex_annotations", False)
