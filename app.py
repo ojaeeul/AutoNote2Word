@@ -1560,10 +1560,12 @@ with st.sidebar:
             default_idx = i
             break
 
+    # StreamlitAPIException 방지: index 파라미터 대신 세션 상태를 직접 동기화
+    st.session_state["menu_selection"] = menu_options[default_idx]
+
     menu = st.radio(
         "🏠 Workspace 메뉴", 
         menu_options, 
-        index=default_idx, 
         key="menu_selection",
         on_change=save_state # 메뉴를 클릭하는 즉시 파일에 영구 저장
     )
