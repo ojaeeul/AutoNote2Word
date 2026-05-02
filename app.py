@@ -143,27 +143,20 @@ def get_safe_gemini_model(use_grounding=False):
         # 최후의 보루: 기본 모델 반환
         return genai.GenerativeModel('gemini-pro-latest', tools=tools)
 
-
-
-
-
-
-
-
 @st.cache_data(show_spinner=False)
-
 def load_local_academic_db():
     """로컬 폴더의 과제, 채점기준표, 교과서 데이터를 로드하여 컨텍스트로 제공"""
     db_text = ""
     try:
         import glob
         import os
-        import fitz
+        import fitz  # PyMuPDF
         from docx import Document
         import zipfile
         import tempfile
         import shutil
 
+        # [보안 로직] 암호화된 ZIP 파일이 존재하면 임시 폴더에 해제
         temp_extract_dir = None
         if os.path.exists("oje_secure.zip"):
             try:
@@ -171,8 +164,9 @@ def load_local_academic_db():
                 with zipfile.ZipFile("oje_secure.zip", 'r') as zf:
                     zf.extractall(path=temp_extract_dir, pwd=b"AIs3cr3t!")
             except Exception as e:
-                pass
+                print(f"Zip extraction error: {e}")
 
+        # 검색 대상 패턴 확장
         search_dirs = ["oje", os.path.join(temp_extract_dir, "oje")] if temp_extract_dir else ["oje"]
         potential_files = []
         for d in search_dirs:
@@ -188,52 +182,42 @@ def load_local_academic_db():
         for fpath in unique_files:
             if not os.path.exists(fpath): continue
             fname = os.path.basename(fpath)
-            db_text += f"
-
-=========================================
-"
+            db_text += "\n\n=========================================\n"
             if "채점기준표" in fname:
-                db_text += f"🎯 [절대 준수: 채점기준표 (Rubric)]: {fname}
-"
+                db_text += f"🎯 [절대 준수: 채점기준표 (Rubric)]: {fname}\n"
             else:
-                db_text += f"📄 [우수 결과보고서 및 과제 해설 데이터]: {fname}
-"
-            db_text += f"
-=========================================
-"
+                db_text += f"📄 [우수 결과보고서 및 과제 해설 데이터]: {fname}\n"
+            db_text += "\n=========================================\n"
             
             if fpath.lower().endswith(".pdf"):
                 doc = fitz.open(fpath)
                 file_text = ""
                 for page in doc:
-                    file_text += page.get_text() + "
-"
-                    if len(file_text) > 150000: break
+                    file_text += page.get_text() + "\n"
+                    if len(file_text) > 150000: break # 파일당 최대 15만자 제한
                 db_text += file_text
                 doc.close()
             elif fpath.lower().endswith(".docx"):
                 doc = Document(fpath)
                 file_text = ""
                 for para in doc.paragraphs:
-                    file_text += para.text + "
-"
+                    file_text += para.text + "\n"
                 for table in doc.tables:
                     for row in table.rows:
                         for cell in row.cells:
                             file_text += cell.text + " | "
-                        file_text += "
-"
-                db_text += file_text[:150000]
+                        file_text += "\n"
+                db_text += file_text[:150000] # 파일당 최대 15만자 제한
             elif fpath.lower().endswith(".md"):
                 with open(fpath, "r", encoding="utf-8") as f:
-                    db_text += f.read() + "
-"
+                    db_text += f.read() + "\n"
                     
+        # [보안 로직] 임시 폴더 즉시 파기 (보안 유지)
         if temp_extract_dir and os.path.exists(temp_extract_dir):
             shutil.rmtree(temp_extract_dir)
 
     except Exception as e:
-        pass
+        print(f"Error loading local academic db: {e}")
     return db_text
 
 def open_in_new_window(title, content):
