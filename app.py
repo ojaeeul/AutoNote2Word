@@ -3418,6 +3418,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     4. "분자 오비탈 시각화": parameters: {"molecule_type": "에텐 (C2H4)" | "에타인 (C2H2)" | "물 (H2O)"}
                     5. "기본 도식 및 기하 도형": parameters: {"shape_type": "정사면체 (Tetrahedral)" | "옥타헤드론 (Octahedral)" | "삼각쌍뿔 (Trigonal Bipyramidal)"}
                     6. "2D 분자 구조 / 선구조식": parameters: {"molecule": e.g., "벤젠", "아스피린"}
+                    7. "표 / 기타 그래프": parameters: {"type": "Table", "description": "설명"}
                     
                     Return ONLY a valid JSON string (no markdown ticks) with keys:
                     {
@@ -3474,9 +3475,24 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     elif "기하 도형" in cat or "기본 도식" in cat:
                         img_stream, errors = draw_schematic(params.get("shape_type", "정사면체 (Tetrahedral)"))
                     elif "2D 분자" in cat or "선구조식" in cat:
-                        img_stream, errors = draw_skeletal_structure(params.get("molecule", "아스피린"))
+                        molecule_name = params.get("molecule", "")
+                        supported = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
+                        matched = next((s for s in supported if molecule_name.lower() in s.lower() or s.lower() in molecule_name.lower()), None)
+                        
+                        if matched:
+                            img_stream, errors = draw_skeletal_structure(matched)
+                        else:
+                            # 지원하지 않는 복잡한 분자는 원본 이미지를 그대로 복사해서 삽입
+                            img_stream = io.BytesIO()
+                            img.save(img_stream, format='PNG')
+                    elif "표" in cat or "그래프" in cat or "기타" in cat:
+                        # 표나 기타 그래프는 원본 이미지를 복사해서 삽입
+                        img_stream = io.BytesIO()
+                        img.save(img_stream, format='PNG')
                     else:
-                        st.error("지원하지 않는 이미지 형식이거나 판독에 실패했습니다.")
+                        # 알 수 없는 경우에도 사용자 요청에 따라 원본 복사 삽입
+                        img_stream = io.BytesIO()
+                        img.save(img_stream, format='PNG')
                         
                     if errors:
                         for e in errors: st.error(e)
