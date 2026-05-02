@@ -1,1 +1,8 @@
 libfreetype-dev
+libjpeg-dev
+zlib1g-dev
+libpng-dev
+liblcms2-dev
+libwebp-dev
+libharfbuzz-dev
+libfribidi-dev
