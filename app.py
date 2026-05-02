@@ -3388,6 +3388,16 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
     st.markdown("### 📸 AI 비전 자동 역설계 (Vision-to-Plot)")
     st.markdown("이미지나 PDF를 업로드하면, AI가 형태를 인식하여 가장 적절한 화학/물리 그래픽으로 자동 복원하고 워드 파일에 추가합니다.")
     
+    if "vision_history" not in st.session_state:
+        st.session_state.vision_history = []
+        
+    # 기존 작업 내역 렌더링 (새로고침/페이지 이동 시 유지용)
+    if st.session_state.vision_history:
+        for idx, item in enumerate(reversed(st.session_state.vision_history)):
+            with st.container(border=True):
+                st.success(f"✅ 기존 변환 내역: {item['category']} ({item['reasoning']})")
+                st.image(item['image'])
+    
     vision_upload = st.file_uploader("이미지 또는 PDF 파일 업로드", type=["png", "jpg", "jpeg", "pdf"], key="vision_uploader_unified")
     if vision_upload and st.button("🚀 AI 분석 및 워드에 자동 복원", use_container_width=True):
         if not st.session_state.get("gemini_api_key"):
@@ -3505,6 +3515,14 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     if img_stream:
                         img_stream.seek(0)
                         st.image(img_stream)
+                        
+                        img_stream.seek(0)
+                        st.session_state.vision_history.append({
+                            "category": data['category'],
+                            "reasoning": data['reasoning'],
+                            "image": img_stream.getvalue()
+                        })
+                        
                         img_stream.seek(0)
                         from docx.shared import Inches
                         st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
