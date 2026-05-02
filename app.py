@@ -7,7 +7,11 @@ st.set_page_config(page_title="SNU Chem-Ed Studio Pro", page_icon="🧪", layout
 
 # --- Authentication System ---
 def check_password():
-    """Returns `True` if the user had the correct password."""
+    # 1. URL 파라미터에서 영구 로그인 상태 확인 (새로고침 방어)
+    if st.query_params.get("auth") == "ojaeeul_verified":
+        st.session_state["password_correct"] = True
+        return True
+        
     def password_entered():
         # 기본값은 사용자가 요청한 ID/PW. 추후 Streamlit Secrets에서 오버라이드 가능.
         expected_id = st.secrets.get("admin_id", "ojaeeul")
@@ -15,6 +19,7 @@ def check_password():
         
         if st.session_state["username"] == expected_id and st.session_state["password"] == expected_pw:
             st.session_state["password_correct"] = True
+            st.query_params["auth"] = "ojaeeul_verified" # 새로고침해도 풀리지 않도록 URL에 토큰 삽입
             del st.session_state["password"]  # 보안을 위해 세션에서 비밀번호 삭제
             del st.session_state["username"]
         else:
