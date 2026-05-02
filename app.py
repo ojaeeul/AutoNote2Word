@@ -3391,13 +3391,6 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
     if "vision_history" not in st.session_state:
         st.session_state.vision_history = []
         
-    # 기존 작업 내역 렌더링 (새로고침/페이지 이동 시 유지용)
-    if st.session_state.vision_history:
-        for idx, item in enumerate(reversed(st.session_state.vision_history)):
-            with st.container(border=True):
-                st.success(f"✅ 기존 변환 내역: {item['category']} ({item['reasoning']})")
-                st.image(item['image'])
-    
     vision_upload = st.file_uploader("이미지 또는 PDF 파일 업로드", type=["png", "jpg", "jpeg", "pdf"], key="vision_uploader_unified")
     
     col1, col2 = st.columns([1, 1])
@@ -3417,6 +3410,14 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
             split_cols = 1
             split_rows = 1
             
+    # 기존 작업 내역 렌더링 (새로고침/페이지 이동 시 유지용)
+    if st.session_state.vision_history:
+        with st.expander(f"🗂️ 기존 변환 내역 보기 ({len(st.session_state.vision_history)}개)", expanded=False):
+            for idx, item in enumerate(reversed(st.session_state.vision_history)):
+                with st.container(border=True):
+                    st.success(f"✅ 기존 변환 내역: {item['category']} ({item['reasoning']})")
+                    st.image(item['image'])
+                    
     if vision_upload and st.button("🚀 AI 분석 및 워드에 자동 복원", use_container_width=True):
         if not st.session_state.get("gemini_api_key"):
             st.error("Gemini API 키가 필요합니다. 왼쪽 사이드바 하단에 키를 입력해주세요.")
