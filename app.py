@@ -3425,8 +3425,16 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     }
                     """
                     
-                    model = get_safe_gemini_model(use_grounding=False)
-                    response = model.generate_content([prompt, img])
+                    try:
+                        model = get_safe_gemini_model(use_grounding=False)
+                        response = model.generate_content([prompt, img])
+                    except Exception as e_model:
+                        if "429" in str(e_model) or "quota" in str(e_model).lower():
+                            # 2.0-flash 등의 최신 모델에서 무료 할당량(Quota) 초과 에러 발생 시 1.5-flash로 우회
+                            model = genai.GenerativeModel('models/gemini-1.5-flash')
+                            response = model.generate_content([prompt, img])
+                        else:
+                            raise e_model
                     
                     res_text = response.text.strip()
                     if res_text.startswith("```json"):
