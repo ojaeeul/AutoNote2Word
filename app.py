@@ -2984,8 +2984,12 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
     with col_render:
         st.info("⚠️ 미리보기 화면입니다.")
         with st.container(border=True):
-            st.markdown(user_latex)
-            
+            render_text = user_latex.strip()
+            # 사용자가 $$를 쓰지 않고 텍스트만 쭉 썼거나 중간에 $ 하나만 쓴 경우를 모두 수식으로 예쁘게 렌더링하기 위한 보정
+            if "$$" not in render_text and len(render_text) > 0:
+                parts = render_text.split("$")
+                render_text = "\n\n".join([f"$$ {p.strip()} $$" for p in parts if p.strip()])
+            st.markdown(render_text)
     st.markdown("---")
     if st.button("💾 작성한 수식/문서를 MS 워드로 다운로드 (Pandoc 수식 완벽 변환)", use_container_width=True):
         with st.spinner("수식을 워드용으로 변환 중입니다..."):
