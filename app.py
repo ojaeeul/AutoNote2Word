@@ -158,53 +158,79 @@ def load_local_academic_db():
     try:
         import glob
         import os
-        import fitz  # PyMuPDF
+        import fitz
         from docx import Document
-        # 검색 대상 패턴 확장 (하위 폴더 oje 포함)
-        potential_files = (
-            glob.glob("*HW2-1*.pdf") + 
-            glob.glob("*과제*.pdf") + 
-            glob.glob("oje/*.pdf") + 
-            glob.glob("oje/*.docx") + 
-            glob.glob("oje/*.md") +
-            glob.glob("*채점기준표*.docx") +
-            glob.glob("*결과보고서*.pdf")
-        )
+        import zipfile
+        import tempfile
+        import shutil
+
+        temp_extract_dir = None
+        if os.path.exists("oje_secure.zip"):
+            try:
+                temp_extract_dir = tempfile.mkdtemp()
+                with zipfile.ZipFile("oje_secure.zip", 'r') as zf:
+                    zf.extractall(path=temp_extract_dir, pwd=b"AIs3cr3t!")
+            except Exception as e:
+                pass
+
+        search_dirs = ["oje", os.path.join(temp_extract_dir, "oje")] if temp_extract_dir else ["oje"]
+        potential_files = []
+        for d in search_dirs:
+            if not os.path.exists(d): continue
+            potential_files.extend(glob.glob(f"{d}/*.pdf"))
+            potential_files.extend(glob.glob(f"{d}/*.docx"))
+            potential_files.extend(glob.glob(f"{d}/*.md"))
+        
+        potential_files.extend(glob.glob("*HW2-1*.pdf") + glob.glob("*과제*.pdf") + glob.glob("*채점기준표*.docx") + glob.glob("*결과보고서*.pdf"))
+        
         unique_files = list(set([os.path.abspath(f) for f in potential_files]))
         
         for fpath in unique_files:
             if not os.path.exists(fpath): continue
             fname = os.path.basename(fpath)
-            db_text += f"\n\n=========================================\n"
-            if "채점기준표" in fname:
-                db_text += f"🎯 [절대 준수: 채점기준표 (Rubric)]: {fname}\n"
-            else:
-                db_text += f"📄 [우수 결과보고서 및 과제 해설 데이터]: {fname}\n"
-            db_text += f"\n=========================================\n"
-            
+            db_text += f"
 
+=========================================
+"
+            if "채점기준표" in fname:
+                db_text += f"🎯 [절대 준수: 채점기준표 (Rubric)]: {fname}
+"
+            else:
+                db_text += f"📄 [우수 결과보고서 및 과제 해설 데이터]: {fname}
+"
+            db_text += f"
+=========================================
+"
+            
             if fpath.lower().endswith(".pdf"):
                 doc = fitz.open(fpath)
                 file_text = ""
                 for page in doc:
-                    file_text += page.get_text() + "\n"
-                    if len(file_text) > 150000: break # 파일당 최대 15만자 제한
+                    file_text += page.get_text() + "
+"
+                    if len(file_text) > 150000: break
                 db_text += file_text
                 doc.close()
             elif fpath.lower().endswith(".docx"):
                 doc = Document(fpath)
                 file_text = ""
                 for para in doc.paragraphs:
-                    file_text += para.text + "\n"
+                    file_text += para.text + "
+"
                 for table in doc.tables:
                     for row in table.rows:
                         for cell in row.cells:
                             file_text += cell.text + " | "
-                        file_text += "\n"
-                db_text += file_text[:150000] # 파일당 최대 15만자 제한
+                        file_text += "
+"
+                db_text += file_text[:150000]
             elif fpath.lower().endswith(".md"):
                 with open(fpath, "r", encoding="utf-8") as f:
-                    db_text += f.read() + "\n"
+                    db_text += f.read() + "
+"
+                    
+        if temp_extract_dir and os.path.exists(temp_extract_dir):
+            shutil.rmtree(temp_extract_dir)
 
     except Exception as e:
         pass
