@@ -3510,10 +3510,14 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                                 
                                 # 여백(Padding) 5% 추가
                                 pw, ph = right - left, bottom - top
-                                left = max(0, left - pw * 0.05)
-                                right = min(w, right + pw * 0.05)
-                                top = max(0, top - ph * 0.05)
-                                bottom = min(h, bottom + ph * 0.05)
+                                left = int(max(0, left - pw * 0.05))
+                                right = int(min(w, right + pw * 0.05))
+                                top = int(max(0, top - ph * 0.05))
+                                bottom = int(min(h, bottom + ph * 0.05))
+                                
+                                # 좌우/상하 역전 방지
+                                if right <= left: right = left + 1
+                                if bottom <= top: bottom = top + 1
                                 
                                 cropped = img.crop((left, top, right, bottom))
                                 stream = io.BytesIO()
