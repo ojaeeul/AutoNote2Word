@@ -1555,9 +1555,6 @@ def convert_latex_to_word_docx(markdown_text, output_filename, margins):
         section.left_margin = Cm(margins['left'])
         section.right_margin = Cm(margins['right'])
     
-    # 수정 방지(읽기 전용) 잠금 적용
-    doc.settings.element.append(parse_xml(r'<w:documentProtection w:edit="readOnly" w:enforcement="1" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>'))
-    
     doc.save(output_filename)
     os.remove(temp_md)
 
