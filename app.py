@@ -3475,7 +3475,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     elif "기하 도형" in cat or "기본 도식" in cat:
                         img_stream, errors = draw_schematic(params.get("shape_type", "정사면체 (Tetrahedral)"))
                     elif "2D 분자" in cat or "선구조식" in cat:
-                        molecule_name = params.get("molecule", "")
+                        molecule_name = str(params.get("molecule", ""))
                         supported = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
                         matched = next((s for s in supported if molecule_name.lower() in s.lower() or s.lower() in molecule_name.lower()), None)
                         
