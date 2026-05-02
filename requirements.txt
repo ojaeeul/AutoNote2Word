@@ -7,3 +7,4 @@ pillow
 matplotlib
 numpy
 pandas
+pypandoc_binary
