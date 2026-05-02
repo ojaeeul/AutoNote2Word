@@ -633,6 +633,14 @@ def save_state():
 if "pending_tasks" not in st.session_state:
     st.session_state.pending_tasks = []
 
+if "cell_text_key_counter" not in st.session_state:
+    st.session_state.cell_text_key_counter = 0
+    st.session_state.graph_text_key_counter = 0
+    st.session_state.orbital_text_key_counter = 0
+    st.session_state.lewis_text_key_counter = 0
+    st.session_state.shape_text_key_counter = 0
+    st.session_state.skeletal_text_key_counter = 0
+
 def add_analysis_task(prompt, images, target_subject, file_name):
     st.session_state.pending_tasks.append({
         "prompt": prompt,
