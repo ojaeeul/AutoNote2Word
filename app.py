@@ -3464,34 +3464,42 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     }
                     """
                     
-                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    response = None
-                    last_error = None
-                    
-                    # 선호하는 비전 모델 우선 배치 (빠른 처리 속도 우선)
-                    preferred = [m for m in available_models if '1.5-flash' in m or '2.0-flash' in m]
-                    others = [m for m in available_models if m not in preferred]
-                    target_models = preferred + others
-                    
-                    for m_name in target_models:
-                        try:
-                            model = genai.GenerativeModel(m_name)
-                            response = model.generate_content([prompt, img])
-                            break # 성공 시 루프 탈출
-                        except Exception as e_model:
-                            last_error = e_model
-                            continue
-                            
-                    if not response:
-                        raise Exception(f"무료 할당량(Quota)이 완전히 소진되었거나 접근 가능한 모델이 없습니다. (마지막 에러: {last_error})")
-                    
-                    res_text = response.text.strip()
-                    if res_text.startswith("```json"):
-                        res_text = res_text[7:-3].strip()
-                    elif res_text.startswith("```"):
-                        res_text = res_text[3:-3].strip()
+                    if split_mode != "AI 자동 판단":
+                        # 수동 분할 모드일 경우 AI 호출을 아예 생략 (시간 단축 및 오류 방지)
+                        data = {
+                            "category": "수동 분할 이미지",
+                            "reasoning": f"사용자가 '{split_mode}' 옵션을 선택하여 원본 이미지를 수동 처리합니다.",
+                            "parameters": {}
+                        }
+                    else:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        response = None
+                        last_error = None
                         
-                    data = json.loads(res_text)
+                        preferred = [m for m in available_models if '1.5-flash' in m or '2.0-flash' in m]
+                        others = [m for m in available_models if m not in preferred]
+                        target_models = preferred + others
+                        
+                        for m_name in target_models:
+                            try:
+                                model = genai.GenerativeModel(m_name)
+                                response = model.generate_content([prompt, img])
+                                break
+                            except Exception as e_model:
+                                last_error = e_model
+                                continue
+                                
+                        if not response:
+                            raise Exception(f"무료 할당량(Quota)이 완전히 소진되었거나 접근 가능한 모델이 없습니다. (마지막 에러: {last_error})")
+                        
+                        res_text = response.text.strip()
+                        import re
+                        match = re.search(r'\{.*\}', res_text, re.DOTALL)
+                        if match:
+                            res_text = match.group(0)
+                            
+                        data = json.loads(res_text)
+                        
                     st.success(f"✅ AI 판독 완료: {data['category']} ({data['reasoning']})")
                     
                     cat = data["category"]
