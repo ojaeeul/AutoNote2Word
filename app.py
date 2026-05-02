@@ -5,6 +5,42 @@ import streamlit as st
 # MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(page_title="SNU Chem-Ed Studio Pro", page_icon="🧪", layout="wide")
 
+# --- Authentication System ---
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    def password_entered():
+        # 기본값은 사용자가 요청한 ID/PW. 추후 Streamlit Secrets에서 오버라이드 가능.
+        expected_id = st.secrets.get("admin_id", "ojaeeul")
+        expected_pw = st.secrets.get("admin_pw", "calzone2@")
+        
+        if st.session_state["username"] == expected_id and st.session_state["password"] == expected_pw:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # 보안을 위해 세션에서 비밀번호 삭제
+            del st.session_state["username"]
+        else:
+            st.session_state["password_correct"] = False
+
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show login UI
+    st.markdown("<h1 style='text-align: center; color: #4F46E5; margin-top: 10vh;'>🔒 보안 접속</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; margin-bottom: 2rem;'>접근 권한이 필요합니다. 아이디와 비밀번호를 입력해주세요.</p>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        with st.form(key='login_form'):
+            st.text_input("아이디 (ID)", key="username")
+            st.text_input("비밀번호 (Password)", type="password", key="password")
+            st.form_submit_button("로그인", on_click=password_entered, use_container_width=True)
+            
+        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+            st.error("아이디 또는 비밀번호가 일치하지 않습니다.")
+    return False
+
+if not check_password():
+    st.stop() # 인증되지 않으면 여기서 앱 렌더링을 완전히 중지함
+
 import time
 import openai
 import streamlit.components.v1 as components
