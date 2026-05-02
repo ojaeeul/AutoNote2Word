@@ -3508,7 +3508,20 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         img_stream.seek(0)
                         from docx.shared import Inches
                         st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                        st.success("📝 MS Word 파일에 이미지가 성공적으로 추가되었습니다! 우측 상단 'Word 문서 전체 저장'에서 다운로드하세요.")
+                        st.success("📝 MS Word 파일에 이미지가 성공적으로 추가되었습니다! 아래 버튼을 눌러 바로 다운로드하세요.")
+                        
+                        import time
+                        doc_stream = io.BytesIO()
+                        st.session_state.word_doc.save(doc_stream)
+                        st.download_button(
+                            label="📝 전체 작업 내용 Word로 받기",
+                            data=doc_stream.getvalue(),
+                            file_name=f"SNU_Chem_Report_AI_Vision_{int(time.time())}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            use_container_width=True,
+                            type="primary",
+                            key=f"vision_dl_{int(time.time())}"
+                        )
                         
                 except Exception as e:
                     st.error(f"처리 중 오류 발생: {str(e)}")
