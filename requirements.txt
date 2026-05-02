@@ -8,4 +8,4 @@ matplotlib
 numpy
 pypandoc
 scipy
-pyhwp
+pandas
