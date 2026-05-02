@@ -1652,9 +1652,12 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    if st.session_state.get("global_trash_bin"):
-        st.subheader("🗑️ 통합 휴지통")
-        with st.expander(f"최근 삭제 항목 ({len(st.session_state.global_trash_bin)}/5)", expanded=False):
+    st.subheader("🗑️ 통합 휴지통")
+    trash_count = len(st.session_state.get("global_trash_bin", []))
+    with st.expander(f"최근 삭제 항목 ({trash_count}/5)", expanded=False):
+        if trash_count == 0:
+            st.caption("휴지통이 비어 있습니다.")
+        else:
             for i, item in enumerate(st.session_state.global_trash_bin):
                 st.markdown(f"**[{i+1}] {item.get('type', '항목')}**")
                 st.caption(f"{item['query']} ({item['time']})")
@@ -1664,9 +1667,7 @@ with st.sidebar:
                     if item.get("type") == "보고서":
                         st.session_state.last_report_result = item['content']
                         st.session_state.last_report_query = item['query']
-                        # 메뉴를 보고서 쪽으로 강제 이동
                         st.session_state["menu_selection"] = "💬 실시간 AI 학술 상담 (ChatGPT 스타일)"
-                    # 향후 다른 타입도 여기서 분기 처리 가능
                     st.rerun()
                 st.divider()
 
