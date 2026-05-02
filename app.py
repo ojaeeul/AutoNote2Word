@@ -3372,6 +3372,102 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
 
     st.radio("모든 그리기 도구의 모드를 일괄 변경:", ["기본 (개별 설정)", "전체 자동 모드로 통일", "전체 수동 모드로 통일"], horizontal=True, key="global_mode_widget", on_change=set_global_mode)
     st.markdown("---")
+    
+    st.markdown("### 📸 AI 비전 자동 역설계 (Vision-to-Plot)")
+    st.markdown("이미지나 PDF를 업로드하면, AI가 형태를 인식하여 가장 적절한 화학/물리 그래픽으로 자동 복원하고 워드 파일에 추가합니다.")
+    
+    vision_upload = st.file_uploader("이미지 또는 PDF 파일 업로드", type=["png", "jpg", "jpeg", "pdf"], key="vision_uploader_unified")
+    if vision_upload and st.button("🚀 AI 분석 및 워드에 자동 복원", use_container_width=True):
+        if not st.session_state.get("gemini_api_key"):
+            st.error("Gemini API 키가 필요합니다. 왼쪽 사이드바 하단에 키를 입력해주세요.")
+        else:
+            with st.spinner("AI가 이미지를 분석하여 코드로 역설계 중입니다..."):
+                try:
+                    import google.generativeai as genai
+                    import json
+                    from PIL import Image
+                    import io
+                    import fitz
+                    
+                    genai.configure(api_key=st.session_state.gemini_api_key)
+                    
+                    if vision_upload.name.lower().endswith(".pdf"):
+                        doc_pdf = fitz.open(stream=vision_upload.read(), filetype="pdf")
+                        page = doc_pdf.load_page(0)
+                        pix = page.get_pixmap(dpi=150)
+                        img_bytes = pix.tobytes("png")
+                        img = Image.open(io.BytesIO(img_bytes))
+                    else:
+                        img = Image.open(vision_upload)
+                        
+                    prompt = """
+                    You are an expert scientific diagram analyzer. 
+                    Look at this image and determine which of the following 6 categories it belongs to, and extract the necessary parameters to recreate it.
+                    
+                    Categories & Required Parameters:
+                    1. "3D 격자 생성": parameters: {"cell_type": "Face-Centered (FCC)" | "Body-Centered (BCC)" | "Simple Cubic (SC)" | "HCP (Hexagonal)" | "NaCl (Rock Salt)", "lattice_size": 1, "atom_rad": 0.18}
+                    2. "양자역학 그래프": parameters: {"graph_type": "1D Box 파동함수 (n=1,2,3)" | "2s 오비탈 확률 밀도"}
+                    3. "루이스 전자점식": parameters: {"molecule": e.g., "O2", "N2", "H2O"}
+                    4. "분자 오비탈 시각화": parameters: {"molecule_type": "에텐 (C2H4)" | "에타인 (C2H2)" | "물 (H2O)"}
+                    5. "기본 도식 및 기하 도형": parameters: {"shape_type": "정사면체 (Tetrahedral)" | "옥타헤드론 (Octahedral)" | "삼각쌍뿔 (Trigonal Bipyramidal)"}
+                    6. "2D 분자 구조 / 선구조식": parameters: {"molecule": e.g., "벤젠", "아스피린"}
+                    
+                    Return ONLY a valid JSON string (no markdown ticks) with keys:
+                    {
+                        "category": "<one of the 6 categories above>",
+                        "reasoning": "<short explanation>",
+                        "parameters": { ... }
+                    }
+                    """
+                    
+                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    response = model.generate_content([prompt, img])
+                    
+                    res_text = response.text.strip()
+                    if res_text.startswith("```json"):
+                        res_text = res_text[7:-3].strip()
+                    elif res_text.startswith("```"):
+                        res_text = res_text[3:-3].strip()
+                        
+                    data = json.loads(res_text)
+                    st.success(f"✅ AI 판독 완료: {data['category']} ({data['reasoning']})")
+                    
+                    cat = data["category"]
+                    params = data["parameters"]
+                    
+                    img_stream = None
+                    errors = []
+                    
+                    if "3D 격자" in cat:
+                        img_stream, errors = draw_unit_cell(params.get("cell_type", "Face-Centered (FCC)"), params.get("lattice_size", 1), params.get("atom_rad", 0.18))
+                    elif "양자역학" in cat:
+                        img_stream, errors = draw_quantum_graph(params.get("graph_type", "1D Box 파동함수 (n=1,2,3)"))
+                    elif "루이스" in cat:
+                        img_stream, errors = draw_lewis_structure(params.get("molecule", "O2"))
+                    elif "오비탈" in cat:
+                        img_stream, errors = draw_orbital_diagram(params.get("molecule_type", "에텐 (C2H4)"))
+                    elif "기하 도형" in cat or "기본 도식" in cat:
+                        img_stream, errors = draw_schematic(params.get("shape_type", "정사면체 (Tetrahedral)"))
+                    elif "2D 분자" in cat or "선구조식" in cat:
+                        img_stream, errors = draw_skeletal_structure(params.get("molecule", "아스피린"))
+                    else:
+                        st.error("지원하지 않는 이미지 형식이거나 판독에 실패했습니다.")
+                        
+                    if errors:
+                        for e in errors: st.error(e)
+                    
+                    if img_stream:
+                        img_stream.seek(0)
+                        st.image(img_stream)
+                        img_stream.seek(0)
+                        from docx.shared import Inches
+                        st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
+                        st.success("📝 MS Word 파일에 이미지가 성공적으로 추가되었습니다! 우측 상단 'Word 문서 전체 저장'에서 다운로드하세요.")
+                        
+                except Exception as e:
+                    st.error(f"처리 중 오류 발생: {str(e)}")
+                    
+    st.markdown("---")
 
     col1, col2 = st.columns([1, 1])
     with col1:
