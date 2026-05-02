@@ -2615,7 +2615,18 @@ elif menu == "🔬 실험 보고서 AI 도우미":
 
     search_query = st.text_input("(00 실험 보고서 작성해줘 )", key="report_search_query", placeholder="예: 아스피린 합성 실험, 산염기 적정, 나일론 합성")
 
-    if st.button("🚀 AI로 보고서 예시/구조 검색하기"):
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        search_btn = st.button("🚀 AI로 보고서 예시/구조 검색하기", use_container_width=True)
+    with col2:
+        reset_btn = st.button("🗑️ AI 분석 보고서 초기화", use_container_width=True)
+
+    if reset_btn:
+        st.session_state.last_report_result = None
+        st.session_state.last_report_query = None
+        st.rerun()
+
+    if search_btn:
         if not api_key:
             st.error("왼쪽 메뉴에 Gemini API Key를 입력해주세요!")
         elif search_query:
