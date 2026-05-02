@@ -1621,9 +1621,16 @@ with st.sidebar:
 
     st.markdown("---")
     # Gemini API 철벽 보안 시스템 (Secrets 가동 중)
-    st.session_state.gemini_api_key = st.secrets.get("gemini_api_key", "")
+    secret_key = st.secrets.get("gemini_api_key", "")
+    if secret_key:
+        st.session_state.gemini_api_key = secret_key
+        st.success("🛡️ Gemini AI 철벽 보안 모드 가동 중")
+    else:
+        st.session_state.gemini_api_key = st.text_input("🔑 Gemini API Key 입력", type="password", value=st.session_state.get("gemini_api_key", ""))
+        if not st.session_state.gemini_api_key:
+            st.warning("분석을 위해 Gemini API Key가 필요합니다.")
+            
     api_key = st.session_state.gemini_api_key
-    st.success("🛡️ Gemini AI 철벽 보안 모드 가동 중")
 
     # OpenAI (ChatGPT) 설정 추가
     with st.expander("🤖 ChatGPT (OpenAI) 연동 설정"):
