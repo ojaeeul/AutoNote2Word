@@ -1534,6 +1534,7 @@ def draw_skeletal_structure(molecule, custom_data=""):
 # 워드 수식(OMML) 자동 변환 처리용 Pandoc 엔진
 # ==========================================
 def convert_latex_to_word_docx(markdown_text, output_filename, margins):
+    import pypandoc
     try:
         pypandoc.get_pandoc_version()
     except OSError:
@@ -3420,7 +3421,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     }
                     """
                     
-                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    model = get_safe_gemini_model(use_grounding=False)
                     response = model.generate_content([prompt, img])
                     
                     res_text = response.text.strip()
