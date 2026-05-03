@@ -2,3 +2,8 @@
 maxUploadSize = 2000
 enableXsrfProtection = false
 enableCORS = false
+[server]
+enableStaticServing = true
+
+
+enableStaticServing = true

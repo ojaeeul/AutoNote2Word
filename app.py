@@ -1,6 +1,32 @@
 import datetime
 import re
 import streamlit as st
+import uuid
+import shutil
+
+def get_static_download_link(data, filename, button_text):
+    # data can be bytes or a file path
+    static_dir = os.path.join(os.getcwd(), "static")
+    os.makedirs(static_dir, exist_ok=True)
+    unique_id = str(uuid.uuid4())[:8]
+    safe_filename = f"{unique_id}_{filename}"
+    target_path = os.path.join(static_dir, safe_filename)
+    
+    if isinstance(data, bytes):
+        with open(target_path, "wb") as f:
+            f.write(data)
+    else:
+        shutil.copy2(data, target_path)
+        
+    href = f"""
+    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        {button_text}
+    </a>
+    <br><br>
+    """
+    return href
+
+
 
 # MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(page_title="SNU Chem-Ed Studio Pro", page_icon="🧪", layout="wide")
@@ -413,6 +439,32 @@ def handle_image_analysis(file_obj):
     """
     from PIL import Image
     import streamlit as st
+import uuid
+import shutil
+
+def get_static_download_link(data, filename, button_text):
+    # data can be bytes or a file path
+    static_dir = os.path.join(os.getcwd(), "static")
+    os.makedirs(static_dir, exist_ok=True)
+    unique_id = str(uuid.uuid4())[:8]
+    safe_filename = f"{unique_id}_{filename}"
+    target_path = os.path.join(static_dir, safe_filename)
+    
+    if isinstance(data, bytes):
+        with open(target_path, "wb") as f:
+            f.write(data)
+    else:
+        shutil.copy2(data, target_path)
+        
+    href = f"""
+    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        {button_text}
+    </a>
+    <br><br>
+    """
+    return href
+
+
 
     with st.status(f"🔍 '{file_obj.name}' 상세 분석 중...", expanded=True) as status:
         prompt = "당신은 화학/물리 전문가입니다. 이 이미지에 있는 과학 문제, 그래프, 혹은 구조식을 분석하여 '상세한 풀이 과정'과 '논리적 근거', 그리고 '최종 답'을 설명해 주세요. 수식은 LaTeX 형식($$ ... $$)을 사용하세요."
@@ -455,6 +507,32 @@ def robust_generate_content(prompt, images=None, use_grounding=False):
     재시도 간격(Sleep)을 추가하고 모든 변종 모델명을 시도하는 최후의 철벽 로직
     """
     import streamlit as st
+import uuid
+import shutil
+
+def get_static_download_link(data, filename, button_text):
+    # data can be bytes or a file path
+    static_dir = os.path.join(os.getcwd(), "static")
+    os.makedirs(static_dir, exist_ok=True)
+    unique_id = str(uuid.uuid4())[:8]
+    safe_filename = f"{unique_id}_{filename}"
+    target_path = os.path.join(static_dir, safe_filename)
+    
+    if isinstance(data, bytes):
+        with open(target_path, "wb") as f:
+            f.write(data)
+    else:
+        shutil.copy2(data, target_path)
+        
+    href = f"""
+    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        {button_text}
+    </a>
+    <br><br>
+    """
+    return href
+
+
     import google.generativeai as genai
     import time
 
@@ -1743,13 +1821,8 @@ def show_sample_dialog(title, content, target_subject):
             st.success("변환 완료! 아래 다운로드 버튼을 클릭하세요.")
 
     if st.session_state.get(sample_key):
-        st.download_button(
-            f"📥 {title} 워드 문서 다운로드 (.docx)",
-            data=st.session_state[sample_key],
-            file_name=f"{title}_Sample.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True
-        )
+        dl_link = get_static_download_link(st.session_state[sample_key], f"{title}_Sample.docx", f"📥 {title} 워드 문서 다운로드 (.docx)")
+        st.markdown(dl_link, unsafe_allow_html=True)
 
 
     import json
@@ -2095,13 +2168,8 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
             st.success("문서 변환 완료! 아래 다운로드 버튼을 클릭하세요.")
             
     if st.session_state.get("report_docx_bytes"):
-        st.download_button(
-            "📥 작성한 보고서 Word 다운로드 (.docx)",
-            data=st.session_state.report_docx_bytes,
-            file_name=f"Student_Report_{subject}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True
-        )
+        dl_link = get_static_download_link(st.session_state.report_docx_bytes, f"Student_Report_{subject}.docx", "📥 작성한 보고서 Word 다운로드 (.docx)")
+        st.markdown(dl_link, unsafe_allow_html=True)
 
     copy_html = f"""
     <style>
@@ -3105,14 +3173,8 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
                 st.error(f"워드 파일 변환 중 오류가 발생했습니다: {e}")
 
     if st.session_state.get("latex_docx_bytes"):
-        st.download_button(
-            "📘 완성된 Word 파일 다운로드", 
-            data=st.session_state.latex_docx_bytes, 
-            file_name="LaTeX_Equation.docx", 
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
-            key="dl_latex_word", 
-            use_container_width=True
-        )
+        dl_link = get_static_download_link(st.session_state.latex_docx_bytes, "LaTeX_Equation.docx", "📘 완성된 Word 파일 다운로드")
+        st.markdown(dl_link, unsafe_allow_html=True)
 
 elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석":
     if st.session_state.get("smart_analysis_active", False):
@@ -4058,13 +4120,8 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
     doc_stream = io.BytesIO()
     st.session_state.word_doc.save(doc_stream)
     
-    st.download_button(
-        "누적 워드 문서 다운로드 (.docx)", 
-        data=doc_stream.getvalue(), 
-        file_name="Diagrams.docx", 
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        use_container_width=True
-    )
+    dl_link = get_static_download_link(doc_stream.getvalue(), "Diagrams.docx", "📥 누적 워드 문서 다운로드 (.docx)")
+    st.markdown(dl_link, unsafe_allow_html=True)
 
 elif menu == "📝 수기 노트 AI 문서화":
     st.title("📝 수기 노트 AI 문서화")
