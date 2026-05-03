@@ -1857,8 +1857,8 @@ def render_chem_ed_core_guide():
                         <meta charset="UTF-8">
                         <title>Chem-Ed 상세 가이드: ${item.key}</title>
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-                        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-                        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+                        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
+                        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
                         <script>
                             window.MathJax = {
                                 loader: {load: ['[tex]/mhchem']},
@@ -1869,7 +1869,7 @@ def render_chem_ed_core_guide():
                                     processEscapes: true
                                 }
                             };
-                        </script>
+                        <\/script>
                         <style>
                             body { font-family: 'Inter', sans-serif; padding: 40px; line-height: 1.6; color: #1e293b; background: #f8fafc; user-select: text !important; -webkit-user-select: text !important; }
                             .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
@@ -1913,7 +1913,7 @@ def render_chem_ed_core_guide():
                                 fileDownload.click();
                                 document.body.removeChild(fileDownload);
                             }
-                        </script>
+                        <\/script>
                     </head>
                     <body>
                         <div class="container">
