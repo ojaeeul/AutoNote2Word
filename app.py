@@ -3080,18 +3080,20 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
                 
                 if os.path.exists(out_file):
                     with open(out_file, "rb") as f:
-                        docx_bytes = f.read()
+                        st.session_state.latex_docx_bytes = f.read()
                     os.remove(out_file)
-                    st.success("변환 성공! 아래 버튼을 눌러 다운로드하세요.")
-                    st.download_button(
-                        "📘 완성된 Word 파일 다운로드", 
-                        data=docx_bytes, 
-                        file_name="LaTeX_Equation.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
-                        key="dl_latex_word", 
-                        use_container_width=True
-                    )
+                    st.success("변환 성공! 아래 나타난 다운로드 버튼을 클릭하세요.")
             except Exception as e:
                 st.error(f"워드 파일 변환 중 오류가 발생했습니다: {e}")
+
+    if st.session_state.get("latex_docx_bytes"):
+        st.download_button(
+            "📘 완성된 Word 파일 다운로드", 
+            data=st.session_state.latex_docx_bytes, 
+            file_name="LaTeX_Equation.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+            key="dl_latex_word", 
+            use_container_width=True
+        )
 
 elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석":
     if st.session_state.get("smart_analysis_active", False):
