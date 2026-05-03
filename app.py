@@ -1656,102 +1656,11 @@ with st.sidebar:
     st.subheader("📥 통합 보고서 다운로드")
 
     # 임시 파일 생성을 위한 메모리 버퍼
+
     doc_stream = io.BytesIO()
     st.session_state.word_doc.save(doc_stream)
+    st.download_button("누적 워드 문서 다운로드 (.docx)", data=doc_stream.getvalue(), file_name="Diagrams.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
-    st.download_button(
-        label="📝 전체 작업 내용 Word로 받기",
-        data=doc_stream.getvalue(),
-        file_name="SNU_Chem_Report_Total.docx", mime="application/octet-stream",
-        use_container_width=True,
-        type="primary",
-        help="지금까지 '워드에 추가' 버튼을 눌러 쌓인 모든 분석 결과를 하나의 문서로 저장합니다."
-    )
-
-    st.markdown("---")
-    st.subheader("🗑️ 통합 휴지통")
-    trash_count = len(st.session_state.get("global_trash_bin", []))
-    with st.expander(f"최근 삭제 항목 ({trash_count}/5)", expanded=False):
-        if trash_count == 0:
-            st.caption("휴지통이 비어 있습니다.")
-        else:
-            for i, item in enumerate(st.session_state.global_trash_bin):
-                st.markdown(f"**[{i+1}] {item.get('type', '항목')}**")
-                st.caption(f"{item['query']} ({item['time']})")
-                
-                # 복구 버튼
-                if st.button("♻️ 이 항목 복구하기", key=f"global_restore_{i}", use_container_width=True):
-                    if item.get("type") == "보고서":
-                        st.session_state.last_report_result = item['content']
-                        st.session_state.last_report_query = item['query']
-                        st.session_state["menu_selection"] = "💬 실시간 AI 학술 상담 (ChatGPT 스타일)"
-                    st.rerun()
-                st.divider()
-
-    st.caption("v2.5.0 Professional Edition")
-
-# 과제 샘플 데이터 (TOP 5)
-SAMPLES = {}
-subjects = ["물리화학", "유기화학", "분석화학", "무기화학", "화학교육"]
-for subj in subjects:
-    try:
-        with open(os.path.join(os.path.dirname(__file__), "samples", f"{subj}.md"), "r", encoding="utf-8") as f:
-            SAMPLES[subj] = f.read()
-    except Exception as e:
-        SAMPLES[subj] = f"샘플 데이터를 불러올 수 없습니다: {e}"
-
-# 화학교육(Chem-Ed) 교수학습 상세 가이드 데이터베이스
-# 화학교육 가이드 데이터 로드 함수
-def load_chem_ed_guides():
-    base_dir = os.path.join(os.path.dirname(__file__), "chem_ed_guides")
-    mapping = {
-        "주요 오개념": "misconception.md",
-        "화학 결합": "bonding.md",
-        "동적 평형": "equilibrium.md",
-        "권장 교수학습 모델": "models.md",
-        "5E 순환 학습": "5e_model.md",
-        "POE 모형": "poe_model.md",
-        "평가": "assessment.md"
-    }
-    data = {}
-    for key, filename in mapping.items():
-        path = os.path.join(base_dir, filename)
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                data[key] = f.read()
-        else:
-            # 기본 데이터 유지 (파일이 없을 경우 대비)
-            data[key] = f"# {key}\n상세 자료를 불러올 수 없습니다."
-    return data
-
-CHEM_ED_GUIDE_DATA = load_chem_ed_guides()
-def show_sample_dialog(title, content, target_subject):
-    st.markdown("---")
-    st.subheader(f"🎓 {title} 미리보기")
-
-
-    sample_key = f"sample_bytes_{title}"
-    if st.button("⚡ 이 샘플을 MS Word 문서로 변환하기 (수식 완벽 지원)", type="primary", use_container_width=True):
-        with st.spinner("샘플 수식을 완벽히 변환 중입니다..."):
-            out_file = os.path.join(os.getcwd(), f"{title}_Sample.docx")
-            full_markdown = f"# {title}\n\n" + content
-            margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
-            convert_latex_to_word_docx(full_markdown, out_file, margins)
-            with open(out_file, "rb") as f:
-                st.session_state[sample_key] = f.read()
-            os.remove(out_file)
-            st.success("변환 완료! 아래 다운로드 버튼을 클릭하세요.")
-
-    if st.session_state.get(sample_key):
-        import base64
-        b64 = base64.b64encode(st.session_state[sample_key]).decode()
-        href = f"""
-        <a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{b64}" download="{title}_Sample.docx" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600;">
-            📥 {title} 워드 문서 다운로드 (.docx)
-        </a>
-        <br><br>
-        """
-        st.markdown(href, unsafe_allow_html=True)
 
 
     import json
@@ -1971,7 +1880,7 @@ def render_chem_ed_core_guide():
                                 label=f"💾 {key}.docx 다운로드",
                                 data=f.read(),
                                 file_name=out_file,
-                                mime="application/octet-stream",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                 key=f"dl_btn_{i}",
                                 use_container_width=True
                             )
@@ -1993,7 +1902,7 @@ def render_chem_ed_core_guide():
                         label="💾 통합 가이드.docx 즉시 다운로드",
                         data=f.read(),
                         file_name=out_file,
-                        mime="application/octet-stream",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         key="dl_full",
                         use_container_width=True
                     )
@@ -2085,19 +1994,27 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     import json
     md_escaped = json.dumps(curent_text)
 
-    if st.button("⚡ 내 컴퓨터의 MS Word 프로그램으로 지금 쓴 내용 바로 열기", type="primary", use_container_width=True):
-        with st.spinner("Pandoc 엔진으로 수식을 변환하고 MS Word를 실행 중입니다..."):
-            out_file = os.path.join(os.getcwd(), "Converted_Note.docx")
-            full_markdown = f"# {subject}\n\n" + curent_text
-            margins = {'top': 2.0, 'bottom': 2.0, 'left': 2.5, 'right': 2.5}
-            convert_latex_to_word_docx(full_markdown, out_file, margins)
 
-            import subprocess
-            try:
-                subprocess.Popen(['open', out_file])
-                st.success("🎉 MS Word 프로그램이 성공적으로 실행되었습니다! (수식이 완벽하게 적용됨)")
-            except Exception as e:
-                st.error("Word를 자동으로 실행할 수 없습니다. 다운로드 기능을 이용해주세요.")
+    if st.button("📥 작성한 보고서를 MS Word 문서로 변환하기", type="primary", use_container_width=True):
+        with st.spinner("수식을 포함하여 Word 문서를 생성 중입니다..."):
+            out_file = os.path.join(os.getcwd(), f"Student_Report_{subject}.docx")
+            full_markdown = f"# {subject}\n\n" + curent_text
+            margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
+            convert_latex_to_word_docx(full_markdown, out_file, margins)
+            with open(out_file, "rb") as f:
+                st.session_state.report_docx_bytes = f.read()
+            os.remove(out_file)
+            st.success("문서 변환 완료! 아래 다운로드 버튼을 클릭하세요.")
+            
+    if st.session_state.get("report_docx_bytes"):
+        st.download_button(
+            "📥 작성한 보고서 Word 다운로드 (.docx)",
+            data=st.session_state.report_docx_bytes,
+            file_name=f"Student_Report_{subject}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True
+        )
+
 
     copy_html = f"""
     <style>
@@ -2167,7 +2084,7 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
                     label="📥 완벽하게 변환된 Word 파일 다운로드",
                     data=doc_bytes,
                     file_name=f"{subject}_Notes.docx",
-                    mime="application/octet-stream"
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
 
     st.markdown("---")
@@ -3100,16 +3017,16 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
             except Exception as e:
                 st.error(f"워드 파일 변환 중 오류가 발생했습니다: {e}")
 
+
     if st.session_state.get("latex_docx_bytes"):
-        import base64
-        b64 = base64.b64encode(st.session_state.latex_docx_bytes).decode()
-        href = f'''
-        <a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{b64}" download="LaTeX_Equation.docx" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #10b981; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600;">
-            📘 완성된 Word 파일 다운로드
-        </a>
-        <br><br>
-        '''
-        st.markdown(href, unsafe_allow_html=True)
+        st.download_button(
+            "📘 완성된 Word 파일 다운로드", 
+            data=st.session_state.latex_docx_bytes, 
+            file_name="LaTeX_Equation.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+            key="dl_latex_word", 
+            use_container_width=True
+        )
+
 
 elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석":
     if st.session_state.get("smart_analysis_active", False):
@@ -3427,7 +3344,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         tmp_path = tmp.name
                     pypandoc.convert_text(curent_full_res, 'docx', format='markdown', outputfile=tmp_path)
                     with open(tmp_path, "rb") as f:
-                        st.download_button("📝 분석 결과를 Word 파일로 다운로드 (.docx)", data=f.read(), file_name="AI_Analysis_Result.docx", mime="application/octet-stream", use_container_width=True)
+                        st.download_button("📝 분석 결과를 Word 파일로 다운로드 (.docx)", data=f.read(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
                     import os; os.remove(tmp_path)
                 except:
                     from docx import Document
@@ -3435,7 +3352,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     doc = Document()
                     for line in curent_full_res.split('\n'): doc.add_paragraph(line)
                     doc.save(f_stream)
-                    st.download_button("📓 Word 다운로드 (텍스트 전용)", data=f_stream.getvalue(), file_name="AI_Analysis_Result.docx", mime="application/octet-stream", use_container_width=True)
+                    st.download_button("📓 Word 다운로드 (텍스트 전용)", data=f_stream.getvalue(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
             st.divider()
             st.subheader("📂 데이터베이스(Notion)에 즉시 저장")
@@ -3716,7 +3633,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                             label="📝 전체 작업 내용 Word로 받기",
                             data=doc_stream.getvalue(),
                             file_name=f"SNU_Chem_Report_AI_Vision_{int(time.time())}.docx",
-                            mime="application/octet-stream",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             use_container_width=True,
                             type="primary",
                             key=f"vision_dl_{int(time.time())}"
@@ -4249,7 +4166,7 @@ elif menu == "📝 수기 노트 AI 문서화":
                     with open(tmp_path, "rb") as f:
                         docx_bytes = f.read()
                     os.remove(tmp_path)
-                    st.download_button("📥 분석 결과 Word 문서 다운로드 (.docx)", data=docx_bytes, file_name="Handwritten_Analysis.docx", mime="application/octet-stream", key="hw_download_btn", use_container_width=True)
+                    st.download_button("📥 분석 결과 Word 문서 다운로드 (.docx)", data=docx_bytes, file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_btn", use_container_width=True)
                 except:
                     # Fallback: python-docx 엔진으로 직접 생성
                     import io
@@ -4260,7 +4177,7 @@ elif menu == "📝 수기 노트 AI 문서화":
                     for line in combined_res.split('\n'):
                         doc_fallback.add_paragraph(line)
                     doc_fallback.save(doc_stream)
-                    st.download_button("📥 분석 결과 통합 Word 문서 다운로드 (안전 모드)", data=doc_stream.getvalue(), file_name="Handwritten_Analysis.docx", mime="application/octet-stream", key="hw_download_fallback", use_container_width=True)
+                    st.download_button("📥 분석 결과 통합 Word 문서 다운로드 (안전 모드)", data=doc_stream.getvalue(), file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_fallback", use_container_width=True)
 
 elif menu == "💬 실시간 AI 학술 상담 (ChatGPT 스타일)":
     st.markdown("<h1 class='main-header'>💬 실시간 AI 학술 상담 (ChatGPT 스타일)</h1>", unsafe_allow_html=True)
