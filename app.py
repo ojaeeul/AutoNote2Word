@@ -517,6 +517,7 @@ def robust_generate_content(prompt, images=None, use_grounding=False):
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
     ]
 
+    retry_delay = 3
     for model_name in model_candidates:
         for attempt in range(2): # 각 모델별 2회 재시도 (철벽 돌파)
             try:
@@ -555,7 +556,13 @@ def robust_generate_content(prompt, images=None, use_grounding=False):
                     if res and res.text: return deduplicate_text(res.text)
             except Exception as e:
                 last_er = e
-                time.sleep(0.5) 
+                err_str = str(e).lower()
+                if "429" in err_str or "quota" in err_str or "rate limit" in err_str:
+                    st.toast(f"⏳ API 할당량 초과(429). {retry_delay}초 대기 후 재시도... ({model_name})")
+                    time.sleep(retry_delay)
+                    retry_delay += 3  # 점진적으로 대기 시간 늘림 (Rate Limit 방어)
+                else:
+                    time.sleep(1) 
                 continue
 
     st.error(f"❌ 전 세계 AI 군단(Gemini + ChatGPT)을 총동원했으나 응답을 받지 못했습니다. (마지막 에러: {last_er})")
@@ -2442,10 +2449,11 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
                             model = get_safe_gemini_model()
                             try:
                                 sys_prompt = "너는 서울대학교 화학교육과 조교야. 학생이 과제 레포트 작성 중 너에게 다음 부분의 대필을 요청했어. 전공 수준의 정확한 화학/물리 지식(LaTeX 수식 $$ $$ 적극 활용)과 논리적인 문장으로 작성해줘:\n\n요청내용: "
-                                res = model.generate_content(sys_prompt + ai_prompt)
-                                st.session_state.notion_db[subject] += "" + res_text
-                                if f"editor_{subject}" in st.session_state: del st.session_state[f"editor_{subject}"]
-                                st.rerun()
+                                res_text = robust_generate_content(sys_prompt + ai_prompt)
+                                if res_text:
+                                    st.session_state.notion_db[subject] += "\n" + res_text
+                                    if f"editor_{subject}" in st.session_state: del st.session_state[f"editor_{subject}"]
+                                    st.rerun()
                             except Exception as e:
                                 st.error(f"오류: {e}")
 
@@ -3532,27 +3540,10 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                             "parameters": {}
                         }
                     else:
-                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                        response = None
-                        last_error = None
+                        res_text = robust_generate_content(prompt, images=[img], use_grounding=False)
+                        if not res_text:
+                            raise Exception("무료 할당량(Quota)이 완전히 소진되었거나 접근 가능한 모델이 없습니다.")
                         
-                        preferred = [m for m in available_models if '1.5-flash' in m or '2.0-flash' in m]
-                        others = [m for m in available_models if m not in preferred]
-                        target_models = preferred + others
-                        
-                        for m_name in target_models:
-                            try:
-                                model = genai.GenerativeModel(m_name)
-                                response = model.generate_content([prompt, img])
-                                break
-                            except Exception as e_model:
-                                last_error = e_model
-                                continue
-                                
-                        if not response:
-                            raise Exception(f"무료 할당량(Quota)이 완전히 소진되었거나 접근 가능한 모델이 없습니다. (마지막 에러: {last_error})")
-                        
-                        res_text = response.text.strip()
                         import re
                         match = re.search(r'\{.*\}', res_text, re.DOTALL)
                         if match:
