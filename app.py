@@ -3355,7 +3355,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 5. **시각 자료 전수 포착**: 3D 격자, 오비탈, 전자점식, 그래프 등을 데이터화하십시오. (누락 제로)
                 6. **출력 구조**: [질문 전사] -> [심층 학술 해설(LaTeX)] -> [시각화 가이드] -> [최종 정답]
                 """
-                            res = robust_generate_content(solve_prompt, images=[cur_img], use_grounding=True)
+                            res = robust_generate_content(solve_prompt, images=[cur_img], use_grounding=False)
                             if res:
                                 buffer[q_key] = res
                                 page_results_found = True
