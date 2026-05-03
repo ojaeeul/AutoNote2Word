@@ -1,3 +1,4 @@
+
 import datetime
 import re
 import streamlit as st
@@ -1769,7 +1770,7 @@ with st.sidebar:
                     st.rerun()
                 st.divider()
 
-    st.caption("v2.5.0 Professional Edition")
+    st.caption("v2.5.2 Professional Edition")
 
 # 과제 샘플 데이터 (TOP 5)
 SAMPLES = {}
