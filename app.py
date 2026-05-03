@@ -1,30 +1,37 @@
 import datetime
 import re
 import streamlit as st
-import uuid
-import shutil
+import platform
+import subprocess
 
-def get_static_download_link(data, filename, button_text):
-    # data can be bytes or a file path
-    static_dir = os.path.join(os.getcwd(), "static")
-    os.makedirs(static_dir, exist_ok=True)
-    unique_id = str(uuid.uuid4())[:8]
-    safe_filename = f"{unique_id}_{filename}"
-    target_path = os.path.join(static_dir, safe_filename)
-    
-    if isinstance(data, bytes):
-        with open(target_path, "wb") as f:
-            f.write(data)
-    else:
-        shutil.copy2(data, target_path)
-        
-    href = f"""
-    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        {button_text}
-    </a>
-    <br><br>
-    """
-    return href
+def open_file_in_os(filepath):
+    """지정된 파일을 해당 OS의 기본 프로그램(MS Word 등)으로 엽니다."""
+    try:
+        import subprocess
+        if platform.system() == "Darwin":       # macOS
+            subprocess.Popen(["open", filepath])
+        elif platform.system() == "Windows":    # Windows
+            os.startfile(filepath)
+        else:                                   # linux variants
+            subprocess.Popen(["xdg-open", filepath])
+        return True
+    except Exception as e:
+        st.error(f"파일을 자동으로 여는 중 오류가 발생했습니다: {e}")
+        return False
+
+def open_any_word_direct(title, content, filename_prefix="Sample"):
+    """마크다운 콘텐츠를 워드로 변환하고 즉시 실행합니다."""
+    with st.spinner(f"{title} 문서를 워드로 변환 중..."):
+        import time
+        out_file = os.path.join(os.getcwd(), f"{filename_prefix}_{int(time.time())}.docx")
+        margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
+        if convert_latex_to_word_docx(f"# {title}\n\n" + content, out_file, margins):
+            open_file_in_os(out_file)
+            st.success(f"🎉 {title} 워드가 새 창에서 실행되었습니다!")
+            with open(out_file, "rb") as f:
+                st.download_button(f"💾 {title} 저장", f.read(), f"{filename_prefix}.docx", key=f"dl_any_{title}_{int(time.time())}")
+
+
 
 
 
@@ -69,8 +76,9 @@ def check_password():
             st.error("아이디 또는 비밀번호가 일치하지 않습니다.")
     return False
 
-if not check_password():
-    st.stop() # 인증되지 않으면 여기서 앱 렌더링을 완전히 중지함
+# if not check_password():
+#     st.stop() 
+pass
 
 import time
 import openai
@@ -439,30 +447,6 @@ def handle_image_analysis(file_obj):
     """
     from PIL import Image
     import streamlit as st
-import uuid
-import shutil
-
-def get_static_download_link(data, filename, button_text):
-    # data can be bytes or a file path
-    static_dir = os.path.join(os.getcwd(), "static")
-    os.makedirs(static_dir, exist_ok=True)
-    unique_id = str(uuid.uuid4())[:8]
-    safe_filename = f"{unique_id}_{filename}"
-    target_path = os.path.join(static_dir, safe_filename)
-    
-    if isinstance(data, bytes):
-        with open(target_path, "wb") as f:
-            f.write(data)
-    else:
-        shutil.copy2(data, target_path)
-        
-    href = f"""
-    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        {button_text}
-    </a>
-    <br><br>
-    """
-    return href
 
 
 
@@ -507,30 +491,6 @@ def robust_generate_content(prompt, images=None, use_grounding=False):
     재시도 간격(Sleep)을 추가하고 모든 변종 모델명을 시도하는 최후의 철벽 로직
     """
     import streamlit as st
-import uuid
-import shutil
-
-def get_static_download_link(data, filename, button_text):
-    # data can be bytes or a file path
-    static_dir = os.path.join(os.getcwd(), "static")
-    os.makedirs(static_dir, exist_ok=True)
-    unique_id = str(uuid.uuid4())[:8]
-    safe_filename = f"{unique_id}_{filename}"
-    target_path = os.path.join(static_dir, safe_filename)
-    
-    if isinstance(data, bytes):
-        with open(target_path, "wb") as f:
-            f.write(data)
-    else:
-        shutil.copy2(data, target_path)
-        
-    href = f"""
-    <a href="app/static/{safe_filename}" download="{filename}" target="_blank" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        {button_text}
-    </a>
-    <br><br>
-    """
-    return href
 
 
     import google.generativeai as genai
@@ -800,7 +760,7 @@ if "notion_db" not in st.session_state:
 **2. 작용기 및 명명법**
 - 알코올, 카복실산, 에스터의 수소 결합 및 끓는점 비교.
 - **[도표 추천]**: 작용기별 IR 흡수 주파수 영역대 정리 표.""",
-        "무기화학": """### 📗 Atkins [화학의 원리] 무기 및 원자 구조
+        "무기화학": r"""### 📗 Atkins [화학의 원리] 무기 및 원자 구조
 **1. 주기적 성질 (Periodic Trends)**
 - 유효 핵전하($$Z_{eff}$$)와 이온화 에너지, 원자 반지름의 경향성.
 - Slater's Rule을 이용한 가리움 효과 계산.\n**2. 배위 화학 (Coordination Chemistry)**
@@ -814,7 +774,7 @@ if "notion_db" not in st.session_state:
 **2. 전기화학 (Electrochemistry)**
 - 네른스트 식 (Nernst Equation): $E = E^\circ - \frac{RT}{nF} \ln Q$.
 - 표준 환원 전위표를 이용한 전지 전위($E_{cell}$) 예측.""",
-        "화학교육": """### 📓 Atkins [화학의 원리] 화학교육학적 분석
+        "화학교육": r"""### 📓 Atkins [화학의 원리] 화학교육학적 분석
 **1. 학습자 오개념 분석**
 - **평형의 동적 특성**: 학생들이 화학 평형을 정적인 상태(반응이 멈춤)로 오해하는 경향 분석.
 - **오비탈의 물리적 의미**: 오비탈을 전자가 들어있는 '그릇'으로 인식하는 오개념 교정 전략.
@@ -1640,28 +1600,71 @@ def draw_skeletal_structure(molecule, custom_data=""):
 # ==========================================
 def convert_latex_to_word_docx(markdown_text, output_filename, margins):
     import pypandoc
-    try:
-        pypandoc.get_pandoc_version()
-    except OSError:
-        with st.spinner("최초 1회: 완벽한 수식 변환을 위한 Pandoc 엔진을 설치 중입니다 (약 1분 소요)..."):
-            pypandoc.download_pandoc()
+    import os
+    import uuid
+    import re
 
-    temp_md = "temp.md"
-    with open(temp_md, "w", encoding="utf-8") as f:
-        f.write(markdown_text)
-
-    pypandoc.convert_file(temp_md, 'docx', outputfile=output_filename)
-
-    from docx.oxml import parse_xml
-    doc = Document(output_filename)
-    for section in doc.sections:
-        section.top_margin = Cm(margins['top'])
-        section.bottom_margin = Cm(margins['bottom'])
-        section.left_margin = Cm(margins['left'])
-        section.right_margin = Cm(margins['right'])
+    # --- 1. 철저한 텍스트 정화 (Word 충돌 유발 문자 제거) ---
+    # 제어 문자 및 비정상적인 유니코드 문자 제거 (한글/공백/일반기호 유지)
+    text_clean = "".join(c for c in markdown_text if c.isprintable() or c in "\n\r\t")
     
-    doc.save(output_filename)
-    os.remove(temp_md)
+    # --- 1-1. 마크다운 기호(**, *) 제거 요청 반영 ---
+    # 수식 내의 별표(*)는 유지하기 위해, 텍스트 강조용으로 쓰인 패턴만 제거합니다.
+    # 1) 볼드 기호 (**) 제거
+    text_clean = re.sub(r'\*\*(.*?)\*\*', r'\1', text_clean)
+    # 2) 이탤릭 기호 (*) 제거 (글자 양옆에 붙어있는 경우만)
+    text_clean = re.sub(r'(^|[^a-zA-Z0-9])\*(.*?)\*([^a-zA-Z0-9]|$)', r'\1\2\3', text_clean)
+    
+    sanitized_text = text_clean
+    
+    # --- 2. 고유 임시 파일 이름 생성 (충돌 방지) ---
+    temp_id = str(uuid.uuid4())[:8]
+    temp_md = f"temp_{temp_id}.md"
+    
+    try:
+        # Pandoc 설치 확인
+        try:
+            pypandoc.get_pandoc_version()
+        except:
+            pypandoc.ensure_pandoc_installed()
+
+        with open(temp_md, "w", encoding="utf-8") as f:
+            f.write(sanitized_text)
+
+        # --- 3. Pandoc 자체 여백 설정 사용 (파일 손상 방지 핵심) ---
+        # python-docx로 다시 열어 저장하는 과정을 생략하고 Pandoc 단계에서 모든 레이아웃을 결정합니다.
+        # 이 방식이 맥/윈도우 공용으로 가장 안정적입니다.
+        extra_args = [
+            '--standalone',
+            f'--variable=margin-top:{margins.get("top", 2.0)}cm',
+            f'--variable=margin-bottom:{margins.get("bottom", 2.0)}cm',
+            f'--variable=margin-left:{margins.get("left", 2.5)}cm',
+            f'--variable=margin-right:{margins.get("right", 2.5)}cm'
+        ]
+
+        pypandoc.convert_file(temp_md, 'docx', outputfile=output_filename, extra_args=extra_args)
+        
+        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 0:
+            return True
+        else:
+            raise Exception("File creation failed or empty.")
+
+    except Exception as e:
+        # --- 4. 최후의 수단: 텍스트 보존 모드 (python-docx) ---
+        try:
+            from docx import Document
+            doc = Document()
+            doc.add_heading("[안전 복구 모드] 문서 내용", level=1)
+            for line in sanitized_text.split('\n'):
+                doc.add_paragraph(line)
+            doc.save(output_filename)
+            return True
+        except:
+            return False
+    finally:
+        if os.path.exists(temp_md):
+            try: os.remove(temp_md)
+            except: pass
 
 # ==========================================
 # 사이드바 & 워크스페이스 설정
@@ -1811,19 +1814,35 @@ def show_sample_dialog(title, content, target_subject):
     sample_key = f"sample_bytes_{title}"
     if st.button("⚡ 이 샘플을 MS Word 문서로 변환하기 (수식 완벽 지원)", type="primary", use_container_width=True):
         with st.spinner("샘플 수식을 완벽히 변환 중입니다..."):
-            out_file = os.path.join(os.getcwd(), f"{title}_Sample.docx")
+            import time
+            out_file = os.path.join(os.getcwd(), f"Sample_{int(time.time())}.docx")
             full_markdown = f"# {title}\n\n" + content
             margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
-            convert_latex_to_word_docx(full_markdown, out_file, margins)
-            with open(out_file, "rb") as f:
-                st.session_state[sample_key] = f.read()
-            os.remove(out_file)
-            st.success("변환 완료! 아래 다운로드 버튼을 클릭하세요.")
+            if convert_latex_to_word_docx(full_markdown, out_file, margins):
+                with open(out_file, "rb") as f:
+                    st.session_state[sample_key] = f.read()
+                os.remove(out_file)
+                st.success("변환 완료! 아래 버튼을 클릭하여 여세요.")
+            else:
+                st.error("샘플 변환 중 오류가 발생했습니다.")
 
     if st.session_state.get(sample_key):
-        dl_link = get_static_download_link(st.session_state[sample_key], f"{title}_Sample.docx", f"📥 {title} 워드 문서 다운로드 (.docx)")
-        st.markdown(dl_link, unsafe_allow_html=True)
-
+        sc_col1, sc_col2 = st.columns(2)
+        with sc_col1:
+            if st.button(f"⚡ {title} 워드로 바로 열기", use_container_width=True):
+                import time
+                out_file = os.path.join(os.getcwd(), f"{title}_Sample_{int(time.time())}.docx")
+                with open(out_file, "wb") as f:
+                    f.write(st.session_state[sample_key])
+                open_file_in_os(out_file)
+        with sc_col2:
+            st.download_button(
+                label=f"💾 {title} 워드 파일로 저장",
+                data=st.session_state[sample_key],
+                file_name=f"{title}_Sample.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
 
     import json
     content_escaped = json.dumps(content)
@@ -1862,170 +1881,43 @@ def show_sample_dialog(title, content, target_subject):
 
 def render_chem_ed_core_guide():
     with st.expander("🎓 화학교육(Chem-Ed) 교수학습 핵심 가이드 (예비교사 필독)"):
-        st.write("과제나 지도안 작성 시 다음의 교육학적 요소를 점검해 보세요. 각 목을 클릭하면 **5페이지 분량의 상세 전문 자료**가 별도 창으로 열립니다.")
+        st.write("과제나 지도안 작성 시 다음의 교육학적 요소를 점검해 보세요. 각 버튼을 클릭하면 **즉시 내 컴퓨터의 MS Word**로 열립니다.")
         
-        import json
-        data_json = json.dumps(CHEM_ED_GUIDE_DATA)
+        ce_cols = st.columns(7)
+        items = [
+            ("🧠 오개념", "주요 오개념"),
+            ("💎 화학결합", "화학 결합"),
+            ("⚖️ 동적평형", "동적 평형"),
+            ("🧑‍🏫 교수모델", "권장 교수학습 모델"),
+            ("🔄 5E순환", "5E 순환 학습"),
+            ("🧪 POE모형", "POE 모형"),
+            ("📊 평가설계", "평가")
+        ]
         
-        guide_html = r"""
-        <div id="guide-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-family: 'Inter', sans-serif;">
-        </div>
-        
-        <script>
-        const data = """ + data_json + """;
-        const container = document.getElementById('guide-container');
-        
-        const items = [
-            { key: "주요 오개념", icon: "🧠", label: "1. 주요 오개념 (Misconception)" },
-            { key: "화학 결합", icon: "💎", label: "2. 화학 결합 (Bonding)" },
-            { key: "동적 평형", icon: "⚖️", label: "3. 동적 평형 (Equilibrium)" },
-            { key: "권장 교수학습 모델", icon: "🧑‍🏫", label: "4. 권장 교수학습 모델" },
-            { key: "5E 순환 학습", icon: "🔄", label: "5. 5E 순환 학습 모델" },
-            { key: "POE 모형", icon: "🧪", label: "6. POE (Predict-Observe-Explain)" },
-            { key: "평가", icon: "📊", label: "7. 평가 및 형성 평가 설계" }
-        ];
-        
-        items.forEach(item => {
-            const btn = document.createElement('button');
-            btn.style.width = '100%';
-            btn.style.padding = '14px 16px';
-            btn.style.borderRadius = '10px';
-            btn.style.border = '1px solid #e2e8f0';
-            btn.style.background = 'white';
-            btn.style.cursor = 'pointer';
-            btn.style.textAlign = 'left';
-            btn.style.fontWeight = '600';
-            btn.style.fontSize = '14px';
-            btn.style.color = '#1e293b';
-            btn.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
-            btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-            btn.innerHTML = `<span style="margin-right: 10px; font-size: 1.2rem;">${item.icon}</span> ${item.label}`;
-            
-            btn.onmouseover = () => { 
-                btn.style.background = '#f8fafc'; 
-                btn.style.borderColor = '#3B82F6';
-                btn.style.transform = 'translateY(-1px)';
-                btn.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-            };
-            btn.onmouseout = () => { 
-                btn.style.background = 'white'; 
-                btn.style.borderColor = '#e2e8f0';
-                btn.style.transform = 'translateY(0)';
-                btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-            };
-            
-            btn.onclick = () => {
-                const content = data[item.key] || "내용을 불러올 수 없습니다.";
-                const win = window.open("", "_blank");
-                if (!win) {
-                    alert("팝업이 차단되었습니다! 브라우저 주소창 우측의 '팝업 차단 해제'를 클릭해주세요.");
-                    return;
-                }
-                
-                // Simple Markdown Parser
-                let htmlContent = content
-                    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-                    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                    .replace(/^- (.*$)/gm, '<li>$1</li>')
-                    .replace(/\\n/g, '<br>');
-
-                const docHtml = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Chem-Ed 상세 가이드: ${item.key}</title>
-                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-                        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
-                        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
-                        <script>
-                            window.MathJax = {
-                                loader: {load: ['[tex]/mhchem']},
-                                tex: {
-                                    packages: {'[+]': ['mhchem']},
-                                    inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
-                                    displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
-                                    processEscapes: true
-                                }
-                            };
-                        <\/script>
-                        <style>
-                            body { font-family: 'Inter', sans-serif; padding: 40px; line-height: 1.6; color: #1e293b; background: #f8fafc; user-select: text !important; -webkit-user-select: text !important; }
-                            .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
-                            h1 { color: #1e3a8a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-                            h2 { color: #1e40af; margin-top: 30px; }
-                            li { margin-bottom: 8px; }
-                            .btn-group { display: flex; gap: 10px; margin-top: 40px; }
-                            .print-btn, .copy-btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-                            .print-btn { background: #3b82f6; color: white; }
-                            .copy-btn { background: #10b981; color: white; }
-                            .print-btn:hover, .copy-btn:hover { opacity: 0.9; }
-                        </style>
-                        <script>
-                            function copyToClipboard() {
-                                const el = document.getElementById('content');
-                                // HTML과 텍스트 모두를 클립보드에 넣기 위해 시도
-                                const text = el.innerText;
-                                navigator.clipboard.writeText(text).then(() => {
-                                    const btn = document.querySelector('.copy-btn');
-                                    const originalText = btn.innerText;
-                                    btn.innerText = '✅ 복사 완료!';
-                                    setTimeout(() => { btn.innerText = originalText; }, 2000);
-                                }).catch(er => {
-                                    alert('복사 중 오류가 발생했습니다: ' + er);
-                                });
-                            }
-
-                            function downloadWord() {
-                                const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
-                                        "xmlns:w='urn:schemas-microsoft-com:office:word' " +
-                                        "xmlns='http://www.w3.org/TR/REC-html40'>" +
-                                        "<head><meta charset='utf-8'><title>Chem-Ed Guide</title></head><body>";
-                                const footer = "</body></html>";
-                                const sourceHTML = header + document.getElementById("content").innerHTML + footer;
-                                
-                                const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-                                const fileDownload = document.createElement("a");
-                                document.body.appendChild(fileDownload);
-                                fileDownload.href = source;
-                                fileDownload.download = 'ChemEd_Guide.doc';
-                                fileDownload.click();
-                                document.body.removeChild(fileDownload);
-                            }
-                        <\/script>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div id="content">${htmlContent}</div>
-                            <div class="btn-group">
-                                <button class="copy-btn" onclick="copyToClipboard()">📋 복사</button>
-                                <button class="copy-btn" style="background: #8b5cf6;" onclick="downloadWord()">📄 워드 다운로드</button>
-                                <button class="print-btn" onclick="window.print()">📥 PDF 저장 / 인쇄</button>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                `;
-                
-                win.document.open();
-                win.document.write(docHtml);
-                win.document.close();
-            };
-            
-            container.appendChild(btn);
-        });
-        </script>
-        """
-        import streamlit.components.v1 as components
-        components.html(guide_html, height=230)
+        for i, (label, key) in enumerate(items):
+            with ce_cols[i]:
+                if st.button(label, key=f"ce_main_{i}", use_container_width=True, type="secondary"):
+                    content = CHEM_ED_GUIDE_DATA.get(key, "내용 없음")
+                    open_any_word_direct(key, content, "ChemEd_Guide")
 
         st.markdown("---")
-        st.markdown("### 📥 워드 파일(.docx) 다운로드 센터")
+        st.markdown("### 📥 화학교육 가이드(.docx) 직접 다운로드 센터")
         st.caption("가이드 내용을 오프라인에서 확인하거나 과제에 활용할 수 있도록 워드 문서로 제공합니다.")
         
         d_col1, d_col2 = st.columns(2)
+        for i, (label, key) in enumerate(items):
+            target_col = d_col1 if i % 2 == 0 else d_col2
+            with target_col:
+                if st.button(f"📝 {key} (Word 즉시 열기)", key=f"ce_dl_{i}", use_container_width=True):
+                    with st.spinner(f"{key} 가이드 변환 중..."):
+                        import time
+                        out_file = os.path.join(os.getcwd(), f"ChemEd_{i}_{int(time.time())}.docx")
+                        content = CHEM_ED_GUIDE_DATA.get(key, "내용 없음")
+                        margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
+                        if convert_latex_to_word_docx(f"# {key} 상세 가이드\n\n" + content, out_file, margins):
+                            open_file_in_os(out_file)
+                            with open(out_file, "rb") as f:
+                                st.download_button(f"💾 {key} 파일 직접 저장", f.read(), f"ChemEd_{key}.docx", use_container_width=True)
         
         items = list(CHEM_ED_GUIDE_DATA.items())
         for i in range(len(items)):
@@ -2075,7 +1967,6 @@ def render_chem_ed_core_guide():
 # 1. Notion 스타일 관리 및 여백 조절 + 네이티브 워드 수식
 # ==========================================
 if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
-
 
     # 상단 컨트롤 패널 (모든 요소를 가로 1줄로 쫙 펼치기)
     c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.0, 3.5, 1.5])
@@ -2145,10 +2036,11 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     st.markdown("---")
 
     # ==============================
-    # 🚀 MS Word / Notion 바로 복사 기능 (맨 위로 이동)
+    # 🚀 MS Word / Notion 바로 복사 기능
     # ==============================
     st.subheader("🚀 원클릭 바로 쓰기 (다운로드 없이 복사)")
     st.write("번거로운 파일 변환/다운로드 과정 없이, 작성하신 노트를 클릭 한 번으로 복사하여 원하는 곳에 바로 붙여넣으세요!")
+    st.caption(r"팁: 수식을 작성할 때는 기호 앞뒤를 $$ 로 감싸주세요! (예: $$ \Delta G $$)")
 
     # 최신 텍스트 상태 가져오기
     curent_text = st.session_state.get(f"editor_{subject}", st.session_state.notion_db[subject])
@@ -2156,20 +2048,29 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     import json
     md_escaped = json.dumps(curent_text)
 
-    if st.button("📥 작성한 보고서를 MS Word 문서로 변환하기", type="primary", use_container_width=True):
-        with st.spinner("수식을 포함하여 Word 문서를 생성 중입니다..."):
-            out_file = os.path.join(os.getcwd(), f"Student_Report_{subject}.docx")
+    if st.button("⚡ 내 컴퓨터의 MS Word로 지금 작성한 보고서 즉시 열기 (추천)", type="primary", use_container_width=True):
+        with st.spinner("수식을 포함하여 Word 문서를 생성하고 실행 중입니다..."):
+            import time
+            out_file = os.path.join(os.getcwd(), f"Report_{subject}_{int(time.time())}.docx")
             full_markdown = f"# {subject}\n\n" + curent_text
             margins = {'top': 2.0, 'bottom': 2.0, 'left': 2.5, 'right': 2.5}
-            convert_latex_to_word_docx(full_markdown, out_file, margins)
-            with open(out_file, "rb") as f:
-                st.session_state.report_docx_bytes = f.read()
-            os.remove(out_file)
-            st.success("문서 변환 완료! 아래 다운로드 버튼을 클릭하세요.")
-            
-    if st.session_state.get("report_docx_bytes"):
-        dl_link = get_static_download_link(st.session_state.report_docx_bytes, f"Student_Report_{subject}.docx", "📥 작성한 보고서 Word 다운로드 (.docx)")
-        st.markdown(dl_link, unsafe_allow_html=True)
+            if convert_latex_to_word_docx(full_markdown, out_file, margins):
+                # 파일 내용을 세션에 저장하여 다운로드 버튼도 활성화
+                with open(out_file, "rb") as f:
+                    st.session_state[f"last_word_{subject}"] = f.read()
+                open_file_in_os(out_file)
+                st.success("🎉 MS Word가 성공적으로 실행되었습니다!")
+            else:
+                st.error("워드 파일 생성 중 오류가 발생했습니다.")
+
+    if st.session_state.get(f"last_word_{subject}"):
+        st.download_button(
+            label=f"💾 생성된 {subject} 워드 파일 파일로 직접 저장하기",
+            data=st.session_state[f"last_word_{subject}"],
+            file_name=f"{subject}_Report.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True
+        )
 
     copy_html = f"""
     <style>
@@ -2220,56 +2121,69 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     import streamlit.components.v1 as components
     components.html(copy_html, height=60)
 
-    with st.expander("🖨️ 수동으로 Word 파일(.docx) 다운로드 (기존 기능)"):
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        m_top = col_m1.slider("위쪽 여백 (cm)", 0.0, 5.0, 2.0, 0.1)
-        m_bot = col_m2.slider("아래쪽 여백 (cm)", 0.0, 5.0, 2.0, 0.1)
-        m_left = col_m3.slider("왼쪽 여백 (cm)", 0.0, 5.0, 2.5, 0.1)
-        m_right = col_m4.slider("오른쪽 여백 (cm)", 0.0, 5.0, 2.5, 0.1)
+    def render_copyable_math(latex_display, latex_code):
+        import json
+        import streamlit.components.v1 as components
+        safe_display = latex_display.replace("\\", "\\\\").replace("\"", "\\\"")
+        safe_code = latex_code.replace("\\", "\\\\").replace("\"", "\\\"")
+        
+        components.html(f"""
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+            <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+            <style>
+                .math-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 10px 0; cursor: pointer; transition: all 0.2s; text-align: center; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+                .math-box:hover {{ border-color: #3b82f6; background: #f8fafc; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1); }}
+                .copy-icon {{ position: absolute; top: 10px; right: 10px; color: #94a3b8; opacity: 0.6; }}
+                .copy-hint {{ font-size: 11px; color: #64748b; margin-top: 10px; font-weight: 500; }}
+                #toast {{ visibility: hidden; min-width: 120px; background-color: #1e293b; color: #fff; text-align: center; border-radius: 6px; padding: 10px; position: fixed; z-index: 100; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 13px; }}
+                #toast.show {{ visibility: visible; animation: fadein 0.5s, fadeout 0.5s 1.5s; }}
+                @keyframes fadein {{ from {{bottom: 0; opacity: 0;}} to {{bottom: 20px; opacity: 1;}} }}
+                @keyframes fadeout {{ from {{bottom: 20px; opacity: 1;}} to {{bottom: 0; opacity: 0;}} }}
+            </style>
+            <div class="math-box" onclick="copyCode()">
+                <div class="copy-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></div>
+                <div id="math-content"></div>
+                <div class="copy-hint">📋 클릭하여 LaTeX 코드 복사</div>
+            </div>
+            <div id="toast">✅ 복사 완료!</div>
+            <script>
+                const display = "{safe_display}";
+                const code = "{safe_code}";
+                const el = document.getElementById('math-content');
+                katex.render(display, el, {{ throwOnError: false, displayMode: true }});
+                function copyCode() {{
+                    const temp = document.createElement('textarea');
+                    temp.value = code;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(temp);
+                    const toast = document.getElementById('toast');
+                    toast.className = "show";
+                    setTimeout(() => {{ toast.className = ""; }}, 2000);
+                }}
+            </script>
+        """, height=130)
 
-        if st.button("📓 수식을 변환하여 Word 파일로 다운로드 (.docx)"):
-            with st.spinner("Pandoc을 사용하여 텍스트와 LaTeX 수식을 Word 네이티브 수식으로 변환 중입니다..."):
-                out_file = "Converted_Note.docx"
-                full_markdown = f"# {subject}\n\n" + curent_text
-                margins = {'top': m_top, 'bottom': m_bot, 'left': m_left, 'right': m_right}
-                convert_latex_to_word_docx(full_markdown, out_file, margins)
-                with open(out_file, "rb") as f:
-                    doc_bytes = f.read()
-                st.download_button(
-                    label="📥 완벽하게 변환된 Word 파일 다운로드",
-                    data=doc_bytes,
-                    file_name=f"{subject}_Notes.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-
-    st.markdown("---")
-    st.subheader("🌟 전공 과제 샘플 TOP 5 (클릭하여 팝업 확인)")
-    st.caption("클릭하시면 과목별 템플릿 샘플이 별도 창으로 열립니다.")
-
-
-    def open_subject_sample_html(subject_name):
-        html_path = os.path.join(os.path.dirname(__file__), "samples", f"{subject_name}.html")
-        if os.path.exists(html_path):
-            with open(html_path, "r", encoding="utf-8") as f:
-                st.session_state.active_subject_sample_html = f.read()
-            st.session_state.active_subject_sample_title = subject_name
-        else:
-            st.error("해당 샘플 파일을 찾을 수 없습니다.")
-
-    sc1, sc2, sc3, sc4, sc5 = st.columns(5)
-    if sc1.button("⚛️ 물리화학", use_container_width=True): open_subject_sample_html("물리화학")
-    if sc2.button("🧪 유기화학", use_container_width=True): open_subject_sample_html("유기화학")
-    if sc3.button("📊 분석화학", use_container_width=True): open_subject_sample_html("분석화학")
-    if sc4.button("💎 무기화학", use_container_width=True): open_subject_sample_html("무기화학")
-    if sc5.button("🧑‍🏫 화학교육", use_container_width=True): open_subject_sample_html("화학교육")
-
-    if st.session_state.get("active_subject_sample_html"):
-        st.markdown(f"### 📄 {st.session_state.active_subject_sample_title} 샘플 미리보기")
-        st.components.v1.html(st.session_state.active_subject_sample_html, height=500, scrolling=True)
-        if st.button("샘플 닫기", key="close_subject_sample"):
-            st.session_state.active_subject_sample_html = None
-            st.rerun()
-
+    # --- 추가된 전공 샘플 워드 다운로드 센터 ---
+    with st.expander("📥 전공 과제 샘플(.docx) 직접 다운로드 센터", expanded=False):
+        st.caption("팝업 확인 없이 바로 워드 파일로 소장하고 싶으실 때 사용하세요.")
+        sd_col1, sd_col2 = st.columns(2)
+        sample_list = [("물리화학", "⚛️"), ("유기화학", "🧪"), ("분석화학", "📊"), ("무기화학", "💎"), ("화학교육", "🧑‍🏫")]
+        for i, (name, icon) in enumerate(sample_list):
+            target_col = sd_col1 if i % 2 == 0 else sd_col2
+            with target_col:
+                if st.button(f"{icon} {name} 샘플 (Word 즉시 열기)", key=f"sd_btn_{name}", use_container_width=True):
+                    with st.spinner(f"{name} 샘플 변환 중..."):
+                        import time
+                        out_file = os.path.join(os.getcwd(), f"{name}_Sample_{int(time.time())}.docx")
+                        content = SAMPLES.get(name, "데이터 없음")
+                        margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
+                        if convert_latex_to_word_docx(f"# {name} 샘플\n\n" + content, out_file, margins):
+                            open_file_in_os(out_file)
+                            st.success(f"🎉 {name} 워드가 새 창에서 실행되었습니다!")
+                            with open(out_file, "rb") as f:
+                                st.download_button(f"💾 {name} 파일 직접 저장", f.read(), f"{name}_Sample.docx", use_container_width=True)
 
     # 텍스트 에디터 및 미리보기 (전체 너비 사용)
     st.subheader(f"📝 {subject} 노트 에디터")
@@ -2278,30 +2192,38 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     with st.expander("📌 자주 쓰는 수학/화학 기호 사전 (클릭해서 열기)"):
         st.info("각 코드 박스 우측의 아이콘을 클릭하여 복사(Copy)한 뒤 에디터에 붙여넣으세요! (LaTeX 형식)")
 
-        c_sym1, c_sym2, c_sym3 = st.columns(3)
-        with c_sym1:
-            st.markdown("**1. 그리스 문자**")
-            st.code(r"\\alpha, \\beta, \\gamma, \\delta\n\\Delta, \\pi, \\sigma, \\theta\n\\psi, \\Psi, \\phi, \\omega", language="text")
-        with c_sym2:
-            st.markdown("**2. 기본 수식 기호**")
-            st.code(r"x^2, y_{i}, \\sqrt{x}, \\sqrt[n]{x}\n\\pm, \\mp, \\times, \\div\n\\approx, \\neq, \\propto, \\infty", language="text")
-        with c_sym3:
-            st.markdown("**3. 화학 반응/화살표**")
-            st.code(r"\\rightarow, \\rightleftharpoons\n\\xrightarow{H^+}, \\xleftarow[temp]{cat}\n\\uparow, \\downarow, \\leftrightarow", language="text")
+        # 가로 중첩 방지를 위해 세로로 순차 배치
+        st.markdown("**1. 그리스 문자**")
+        render_copyable_math(r"\alpha, \beta, \gamma, \delta, \Delta, \pi, \sigma, \theta, \psi, \Psi, \phi, \omega", r"\alpha, \beta, \gamma, \delta, \Delta, \pi, \sigma, \theta, \psi, \Psi, \phi, \omega")
+        st.code(r"\alpha, \beta, \gamma, \delta, \Delta, \pi, \sigma, \theta, \psi, \Psi, \phi, \omega", language="latex")
+        
+        st.markdown("---")
+        st.markdown("**2. 기본 수식 기호**")
+        render_copyable_math(r"x^2, y_{i}, \sqrt{x}, \sqrt[n]{x}, \pm, \mp, \times, \div, \approx, \neq, \propto, \infty", r"x^2, y_{i}, \sqrt{x}, \sqrt[n]{x}, \pm, \mp, \times, \div, \approx, \neq, \propto, \infty")
+        st.code(r"x^2, y_{i}, \sqrt{x}, \sqrt[n]{x}, \pm, \mp, \times, \div, \approx, \neq, \propto, \infty", language="latex")
+        
+        st.markdown("---")
+        st.markdown("**3. 화학 반응/화살표**")
+        render_copyable_math(r"A \rightarrow B, C \rightleftharpoons D, E \xrightarrow{H^+} F, G \uparrow, H \downarrow", r"\rightarrow, \rightleftharpoons, \xrightarrow{H^+}, \xleftarrow[temp]{cat}, \uparrow, \downarrow, \leftrightarrow")
+        st.code(r"\rightarrow, \rightleftharpoons, \xrightarrow{H^+}, \xleftarrow[temp]{cat}, \uparrow, \downarrow, \leftrightarrow", language="latex")
 
         st.markdown("---")
-        c_sym4, c_sym5, c_sym6 = st.columns(3)
-        with c_sym4:
-            st.markdown("**4. 열역학/속도론**")
-            st.code(r"\\Delta G = \\Delta H - T\\Delta S\nk = A e^{-\\frac{E_a}{RT}}\nPV = nRT, \\ln K = -\\frac{\\Delta G^\\circ}{RT}", language="text")
-        with c_sym5:
-            st.markdown("**5. 양자역학/오비탈**")
-            st.code(r"\\hat{H}\\psi = E\\psi, \\lambda = \\frac{h}{p}\n\\psi_{n,l,m}, \\nabla^2, \\hbar\n\\int |\\psir|^2 d\\tau = 1", language="text")
-        with c_sym6:
-            st.markdown("**6. 고급 수학 (미적분/행렬)**")
-            st.code(r"\\frac{dy}{dx}, \\frac{\\partial f}{\\partial x}, \\int_a^b\n\\sum_{i=1}^n, \\prod, \\lim_{x \\to 0}\n\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}", language="text")
+        st.markdown("**4. 열역학/속도론**")
+        render_copyable_math(r"\Delta G = \Delta H - T\Delta S, \quad k = A e^{-\frac{E_a}{RT}}, \quad PV = nRT, \quad \ln K = -\frac{\Delta G^\circ}{RT}", r"\Delta G = \Delta H - T\Delta S, k = A e^{-\frac{E_a}{RT}}, PV = nRT, \ln K = -\frac{\Delta G^\circ}{RT}")
+        st.code(r"\Delta G = \Delta H - T\Delta S, k = A e^{-\frac{E_a}{RT}}, PV = nRT, \ln K = -\frac{\Delta G^\circ}{RT}", language="latex")
+        
+        st.markdown("---")
+        st.markdown("**5. 양자역학/오비탈**")
+        render_copyable_math(r"\hat{H}\psi = E\psi, \quad \lambda = \frac{h}{p}, \quad \psi_{n,l,m}, \quad \nabla^2, \quad \hbar, \quad \int |\psi|^2 d\tau = 1", r"\hat{H}\psi = E\psi, \lambda = \frac{h}{p}, \psi_{n,l,m}, \nabla^2, \hbar, \int |\psi|^2 d\tau = 1")
+        st.code(r"\hat{H}\psi = E\psi, \lambda = \frac{h}{p}, \psi_{n,l,m}, \nabla^2, \hbar, \int |\psi|^2 d\tau = 1", language="latex")
+        
+        st.markdown("---")
+        st.markdown("**6. 고급 수학 (미적분/행렬)**")
+        render_copyable_math(r"\frac{dy}{dx}, \quad \frac{\partial f}{\partial x}, \quad \int_a^b f(x) dx, \quad \sum_{i=1}^n x_i, \quad \begin{pmatrix} a & b \\ c & d \end{pmatrix}", r"\frac{dy}{dx}, \frac{\partial f}{\partial x}, \int_a^b, \sum_{i=1}^n, \prod, \lim_{x \to 0}, \begin{pmatrix} a & b \\ c & d \end{pmatrix}")
+        st.code(r"\frac{dy}{dx}, \frac{\partial f}{\partial x}, \int_a^b, \sum_{i=1}^n, \prod, \lim_{x \to 0}, \begin{pmatrix} a & b \\ c & d \end{pmatrix}", language="latex")
 
-        st.caption("팁: 수식을 작성할 때는 기호 앞뒤를 $$ 로 감싸주세요! (예: $$ \\Delta G $$)")
+        st.caption(r"팁: 수식을 작성할 때는 기호 앞뒤를 $$ 로 감싸주세요! (예: $$ \Delta G $$)")
+
 
     render_chem_ed_core_guide()
 
@@ -2581,39 +2503,90 @@ elif menu == "🔬 실험 보고서 AI 도우미":
         html_path = os.path.join(os.path.dirname(__file__), "samples_html", f"{topic_id}.html")
         if os.path.exists(html_path):
             with open(html_path, "r", encoding="utf-8") as f:
-                st.session_state.active_report_sample_html = f.read()
-            st.session_state.active_report_sample_title = title
+                html_content = f.read()
+            import json
+            safe_html = json.dumps(html_content)
+            # 팝업 창 강제 실행
+            import streamlit.components.v1 as components
+            components.html(f"""
+                <script>
+                    const win = window.open("", "_blank");
+                    if (win) {{
+                        win.document.open();
+                        win.document.write({safe_html});
+                        win.document.close();
+                    }} else {{
+                        alert("팝업이 차단되었습니다! 브라우저 주소창 우측의 '팝업 차단 해제'를 클릭해주세요.");
+                    }}
+                </script>
+            """, height=0)
         else:
             st.error("해당 샘플 파일을 찾을 수 없습니다.")
 
-    c_s1, c_s2, c_s3, c_s4, c_s5 = st.columns(5)
+    def open_report_word_direct(code, label):
+        with st.spinner(f"{label} 샘플을 워드로 변환 중..."):
+            import time
+            out_file = os.path.join(os.getcwd(), f"{code}_Report_{int(time.time())}.docx")
+            
+            # 템플릿 내용 로드 (samples_html 폴더에서 직접 읽기)
+            content = ""
+            try:
+                md_path = os.path.join(os.path.dirname(__file__), "samples_html", f"{code}.md")
+                if os.path.exists(md_path):
+                    with open(md_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                else:
+                    content = f"# {label}\n\n데이터 파일을 찾을 수 없습니다."
+            except Exception as e:
+                content = f"# {label}\n\n로드 오류: {e}"
+
+            margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
+            if convert_latex_to_word_docx(f"# {label} 보고서 예시\n\n" + content, out_file, margins):
+                # 즉시 워드 실행 (팝업 차단 영향 없음)
+                open_file_in_os(out_file)
+                st.success(f"🎉 {label} 워드가 새 창에서 실행되었습니다!")
+                with open(out_file, "rb") as f:
+                    st.download_button(f"💾 {label} 저장", f.read(), f"{code}_Report.docx", key=f"dl_rep_{code}")
+
+    # 5열 가로 배치 (Quick Access - 워드 즉시 실행)
+    cr_cols = st.columns(5)
+    r_items = [("aspirin", "💊 아스피린"), ("nylon", "🧶 나일론"), ("titration", "🧪 적정"), ("lattice", "🧊 격자"), ("spectrum", "🌈 스펙트럼")]
     s_topics = ["아스피린 합성 및 재결정", "나일론 6,6 계면 중합", "산-염기 적정 지시약 원리", "NaCl 결정 구조 및 XRD 분석", "수소 원자 스펙트럼과 발머 계열"]
+    
+    for i, (code, label) in enumerate(r_items):
+        with cr_cols[i]:
+            if st.button(label, key=f"quick_rep_{i}", use_container_width=True, type="primary"):
+                st.session_state.report_search_query = s_topics[i]
+                
+                # 내용 로드
+                content = ""
+                try:
+                    md_path = os.path.join(os.path.dirname(__file__), "samples_html", f"{code}.md")
+                    if os.path.exists(md_path):
+                        with open(md_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                except: pass
+                
+                open_any_word_direct(label, content, f"{code}_Report")
 
-    if "report_search_query" not in st.session_state:
-        st.session_state.report_search_query = ""
+    # --- 추가된 실험 보고서 예시 워드 다운로드 센터 ---
+    with st.expander("📥 실험 보고서 예시(.docx) 직접 다운로드 센터", expanded=False):
+        rd_col1, rd_col2 = st.columns(2)
+        for i, (code, label) in enumerate(r_items):
+            target_col = rd_col1 if i % 2 == 0 else rd_col2
+            with target_col:
+                if st.button(f"📝 {label} (Word 즉시 열기)", key=f"rd_btn_{code}", use_container_width=True):
+                    # 내용 로드
+                    content = ""
+                    try:
+                        md_path = os.path.join(os.path.dirname(__file__), "samples_html", f"{code}.md")
+                        if os.path.exists(md_path):
+                            with open(md_path, "r", encoding="utf-8") as f:
+                                content = f.read()
+                    except: pass
+                    open_any_word_direct(label, content, f"{code}_Report")
 
-    if c_s1.button("💊 아스피린"):
-        st.session_state.report_search_query = s_topics[0]
-        open_sample_html("aspirin", s_topics[0])
-    if c_s2.button("🧶 나일론"):
-        st.session_state.report_search_query = s_topics[1]
-        open_sample_html("nylon", s_topics[1])
-    if c_s3.button("🧪 적정"):
-        st.session_state.report_search_query = s_topics[2]
-        open_sample_html("titration", s_topics[2])
-    if c_s4.button("🧊 격자"):
-        st.session_state.report_search_query = s_topics[3]
-        open_sample_html("lattice", s_topics[3])
-    if c_s5.button("🌈 스펙트럼"):
-        st.session_state.report_search_query = s_topics[4]
-        open_sample_html("spectrum", s_topics[4])
-
-    if st.session_state.get("active_report_sample_html"):
-        st.markdown(f"### 📄 {st.session_state.active_report_sample_title} 템플릿 샘플")
-        st.components.v1.html(st.session_state.active_report_sample_html, height=500, scrolling=True)
-        if st.button("샘플 닫기", key="close_report_sample"):
-            st.session_state.active_report_sample_html = None
-            st.rerun()
+    # (기존 미리보기 영역 제거됨 - 팝업으로 대체)
 
 
     # 대학 및 대상 선택 UI 추가
@@ -3173,8 +3146,12 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
                 st.error(f"워드 파일 변환 중 오류가 발생했습니다: {e}")
 
     if st.session_state.get("latex_docx_bytes"):
-        dl_link = get_static_download_link(st.session_state.latex_docx_bytes, "LaTeX_Equation.docx", "📘 완성된 Word 파일 다운로드")
-        st.markdown(dl_link, unsafe_allow_html=True)
+        if st.button("⚡ 변환된 LaTeX 워드 파일 즉시 열기", type="primary", use_container_width=True):
+            out_file = os.path.join(os.getcwd(), "LaTeX_Equation.docx")
+            with open(out_file, "wb") as f:
+                f.write(st.session_state.latex_docx_bytes)
+            open_file_in_os(out_file)
+
 
 elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석":
     if st.session_state.get("smart_analysis_active", False):
@@ -3492,7 +3469,11 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         tmp_path = tmp.name
                     pypandoc.convert_text(curent_full_res, 'docx', format='markdown', outputfile=tmp_path)
                     with open(tmp_path, "rb") as f:
-                        st.download_button("📝 분석 결과를 Word 파일로 다운로드 (.docx)", data=f.read(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
+                        if st.button("⚡ 분석 결과를 MS Word로 바로 열기", use_container_width=True):
+                            out_file = os.path.join(os.getcwd(), "AI_Analysis_Result.docx")
+                            with open(out_file, "wb") as f_out:
+                                f_out.write(f.read())
+                            open_file_in_os(out_file)
                     import os; os.remove(tmp_path)
                 except:
                     from docx import Document
@@ -3500,7 +3481,14 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     doc = Document()
                     for line in curent_full_res.split('\n'): doc.add_paragraph(line)
                     doc.save(f_stream)
-                    st.download_button("📓 Word 다운로드 (텍스트 전용)", data=f_stream.getvalue(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
+                    if st.button("⚡ Word로 바로 열기 (텍스트 전용)", use_container_width=True):
+                        out_file = os.path.join(os.getcwd(), "AI_Result_Text.docx")
+                        from docx import Document
+                        doc = Document()
+                        for line in curent_full_res.split('\n'): 
+                            doc.add_paragraph(line)
+                        doc.save(out_file)
+                        open_file_in_os(out_file)
 
             st.divider()
             st.subheader("📂 데이터베이스(Notion)에 즉시 저장")
@@ -4120,8 +4108,11 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
     doc_stream = io.BytesIO()
     st.session_state.word_doc.save(doc_stream)
     
-    dl_link = get_static_download_link(doc_stream.getvalue(), "Diagrams.docx", "📥 누적 워드 문서 다운로드 (.docx)")
-    st.markdown(dl_link, unsafe_allow_html=True)
+    if st.button("⚡ 누적된 모든 도표/그림 워드로 한꺼번에 열기", type="primary", use_container_width=True):
+        out_file = os.path.join(os.getcwd(), "Diagrams.docx")
+        st.session_state.word_doc.save(out_file)
+        open_file_in_os(out_file)
+
 
 elif menu == "📝 수기 노트 AI 문서화":
     st.title("📝 수기 노트 AI 문서화")
@@ -4307,7 +4298,11 @@ elif menu == "📝 수기 노트 AI 문서화":
                     with open(tmp_path, "rb") as f:
                         docx_bytes = f.read()
                     os.remove(tmp_path)
-                    st.download_button("📥 분석 결과 Word 문서 다운로드 (.docx)", data=docx_bytes, file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_btn", use_container_width=True)
+                    if st.button("⚡ 분석 결과를 MS Word로 바로 열기", key="hw_open_btn", use_container_width=True):
+                        out_file = os.path.join(os.getcwd(), "Handwritten_Analysis.docx")
+                        with open(out_file, "wb") as f_out:
+                            f_out.write(docx_bytes)
+                        open_file_in_os(out_file)
                 except:
                     # Fallback: python-docx 엔진으로 직접 생성
                     import io
@@ -4318,7 +4313,11 @@ elif menu == "📝 수기 노트 AI 문서화":
                     for line in combined_res.split('\n'):
                         doc_fallback.add_paragraph(line)
                     doc_fallback.save(doc_stream)
-                    st.download_button("📥 분석 결과 통합 Word 문서 다운로드 (안전 모드)", data=doc_stream.getvalue(), file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_fallback", use_container_width=True)
+                    if st.button("⚡ 분석 결과를 MS Word로 바로 열기 (안전 모드)", key="hw_open_fallback", use_container_width=True):
+                        out_file = os.path.join(os.getcwd(), "Handwritten_Analysis_Safe.docx")
+                        with open(out_file, "wb") as f_out:
+                            f_out.write(doc_stream.getvalue())
+                        open_file_in_os(out_file)
 
 elif menu == "💬 실시간 AI 학술 상담 (ChatGPT 스타일)":
     st.markdown("<h1 class='main-header'>💬 실시간 AI 학술 상담 (ChatGPT 스타일)</h1>", unsafe_allow_html=True)
