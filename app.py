@@ -1938,7 +1938,7 @@ def render_chem_ed_core_guide():
         </script>
         """
         import streamlit.components.v1 as components
-        components.html(guide_html, height=350)
+        components.html(guide_html, height=230)
 
         st.markdown("---")
         st.markdown("### 📥 워드 파일(.docx) 다운로드 센터")
