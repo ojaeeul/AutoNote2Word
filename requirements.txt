@@ -8,3 +8,4 @@ matplotlib
 numpy
 pandas
 pypandoc_binary
+pyhwp

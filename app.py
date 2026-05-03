@@ -1729,19 +1729,30 @@ def show_sample_dialog(title, content, target_subject):
     st.markdown("---")
     st.subheader(f"🎓 {title} 미리보기")
 
-    if st.button("⚡ 이 샘플을 내 컴퓨터의 MS Word로 바로 열기 (수식 안 깨짐)", type="primary", use_container_width=True):
-        with st.spinner("샘플 수식을 완벽히 변환하여 MS Word를 실행 중입니다..."):
+
+    sample_key = f"sample_bytes_{title}"
+    if st.button("⚡ 이 샘플을 MS Word 문서로 변환하기 (수식 완벽 지원)", type="primary", use_container_width=True):
+        with st.spinner("샘플 수식을 완벽히 변환 중입니다..."):
             out_file = os.path.join(os.getcwd(), f"{title}_Sample.docx")
             full_markdown = f"# {title}\n\n" + content
-            margins = {'top': 2.0, 'bottom': 2.0, 'left': 2.5, 'right': 2.5}
+            margins = {"top": 2.0, "bottom": 2.0, "left": 2.5, "right": 2.5}
             convert_latex_to_word_docx(full_markdown, out_file, margins)
+            with open(out_file, "rb") as f:
+                st.session_state[sample_key] = f.read()
+            os.remove(out_file)
+            st.success("변환 완료! 아래 다운로드 버튼을 클릭하세요.")
 
-            import subprocess
-            try:
-                subprocess.Popen(['open', out_file])
-                st.success("🎉 MS Word 프로그램이 성공적으로 실행되었습니다!")
-            except Exception as e:
-                st.error("Word를 자동으로 실행할 수 없습니다.")
+    if st.session_state.get(sample_key):
+        import base64
+        b64 = base64.b64encode(st.session_state[sample_key]).decode()
+        href = f"""
+        <a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{b64}" download="{title}_Sample.docx" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600;">
+            📥 {title} 워드 문서 다운로드 (.docx)
+        </a>
+        <br><br>
+        """
+        st.markdown(href, unsafe_allow_html=True)
+
 
     import json
     content_escaped = json.dumps(content)
@@ -2163,20 +2174,13 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     st.subheader("🌟 전공 과제 샘플 TOP 5 (클릭하여 팝업 확인)")
     st.caption("클릭하시면 과목별 템플릿 샘플이 별도 창으로 열립니다.")
 
+
     def open_subject_sample_html(subject_name):
         html_path = os.path.join(os.path.dirname(__file__), "samples", f"{subject_name}.html")
         if os.path.exists(html_path):
-            import subprocess
-            try:
-                import platform
-                if platform.system() == "Darwin":
-                    subprocess.Popen(['open', html_path])
-                elif platform.system() == "Windows":
-                    os.startfile(html_path)
-                else:
-                    subprocess.Popen(['xdg-open', html_path])
-            except Exception as e:
-                st.error(f"샘플을 여는 중 오류가 발생했습니다: {e}")
+            with open(html_path, "r", encoding="utf-8") as f:
+                st.session_state.active_subject_sample_html = f.read()
+            st.session_state.active_subject_sample_title = subject_name
         else:
             st.error("해당 샘플 파일을 찾을 수 없습니다.")
 
@@ -2186,6 +2190,14 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
     if sc3.button("📊 분석화학", use_container_width=True): open_subject_sample_html("분석화학")
     if sc4.button("💎 무기화학", use_container_width=True): open_subject_sample_html("무기화학")
     if sc5.button("🧑‍🏫 화학교육", use_container_width=True): open_subject_sample_html("화학교육")
+
+    if st.session_state.get("active_subject_sample_html"):
+        st.markdown(f"### 📄 {st.session_state.active_subject_sample_title} 샘플 미리보기")
+        st.components.v1.html(st.session_state.active_subject_sample_html, height=500, scrolling=True)
+        if st.button("샘플 닫기", key="close_subject_sample"):
+            st.session_state.active_subject_sample_html = None
+            st.rerun()
+
 
     # 텍스트 에디터 및 미리보기 (전체 너비 사용)
     st.subheader(f"📝 {subject} 노트 에디터")
@@ -2492,20 +2504,13 @@ elif menu == "🔬 실험 보고서 AI 도우미":
     # 추천 샘플 TOP 5 버튼 배치
     st.markdown("🌟 **추천 전공 실험 샘플 TOP 5 (Quick Access):**")
 
-    def open_sample_html(topic_id):
+
+    def open_sample_html(topic_id, title):
         html_path = os.path.join(os.path.dirname(__file__), "samples_html", f"{topic_id}.html")
         if os.path.exists(html_path):
-            import subprocess
-            try:
-                import platform
-                if platform.system() == "Darwin":
-                    subprocess.Popen(['open', html_path])
-                elif platform.system() == "Windows":
-                    os.startfile(html_path)
-                else:
-                    subprocess.Popen(['xdg-open', html_path])
-            except Exception as e:
-                st.error(f"샘플을 여는 중 오류가 발생했습니다: {e}")
+            with open(html_path, "r", encoding="utf-8") as f:
+                st.session_state.active_report_sample_html = f.read()
+            st.session_state.active_report_sample_title = title
         else:
             st.error("해당 샘플 파일을 찾을 수 없습니다.")
 
@@ -2517,19 +2522,27 @@ elif menu == "🔬 실험 보고서 AI 도우미":
 
     if c_s1.button("💊 아스피린"):
         st.session_state.report_search_query = s_topics[0]
-        open_sample_html("aspirin")
+        open_sample_html("aspirin", s_topics[0])
     if c_s2.button("🧶 나일론"):
         st.session_state.report_search_query = s_topics[1]
-        open_sample_html("nylon")
+        open_sample_html("nylon", s_topics[1])
     if c_s3.button("🧪 적정"):
         st.session_state.report_search_query = s_topics[2]
-        open_sample_html("titration")
+        open_sample_html("titration", s_topics[2])
     if c_s4.button("🧊 격자"):
         st.session_state.report_search_query = s_topics[3]
-        open_sample_html("lattice")
+        open_sample_html("lattice", s_topics[3])
     if c_s5.button("🌈 스펙트럼"):
         st.session_state.report_search_query = s_topics[4]
-        open_sample_html("spectrum")
+        open_sample_html("spectrum", s_topics[4])
+
+    if st.session_state.get("active_report_sample_html"):
+        st.markdown(f"### 📄 {st.session_state.active_report_sample_title} 템플릿 샘플")
+        st.components.v1.html(st.session_state.active_report_sample_html, height=500, scrolling=True)
+        if st.button("샘플 닫기", key="close_report_sample"):
+            st.session_state.active_report_sample_html = None
+            st.rerun()
+
 
     # 대학 및 대상 선택 UI 추가
     st.markdown("🏛️ **대학별/대상별 특화 검색 옵션:**")
@@ -3002,7 +3015,9 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
     });
 
     // 초기화
-    setTimeout(() => { latexCode.value = mf.value; }, 100);
+    customElements.whenDefined("math-field").then(() => {
+        latexCode.value = mf.value || mf.textContent || "";
+    });
 
     function insert(latex) {
     if (typeof mf.insert === 'function') {
