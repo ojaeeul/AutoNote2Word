@@ -1663,7 +1663,6 @@ with st.sidebar:
         label="📝 전체 작업 내용 Word로 받기",
         data=doc_stream.getvalue(),
         file_name="SNU_Chem_Report_Total.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         use_container_width=True,
         type="primary",
         help="지금까지 '워드에 추가' 버튼을 눌러 쌓인 모든 분석 결과를 하나의 문서로 저장합니다."
