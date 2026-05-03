@@ -1662,7 +1662,7 @@ with st.sidebar:
     st.download_button(
         label="📝 전체 작업 내용 Word로 받기",
         data=doc_stream.getvalue(),
-        file_name="SNU_Chem_Report_Total.docx",
+        file_name="SNU_Chem_Report_Total.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         use_container_width=True,
         type="primary",
@@ -3087,7 +3087,7 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
                     st.download_button(
                         "📘 완성된 Word 파일 다운로드", 
                         data=docx_bytes, 
-                        file_name="LaTeX_Equation.docx", 
+                        file_name="LaTeX_Equation.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
                         key="dl_latex_word", 
                         use_container_width=True
                     )
@@ -3410,7 +3410,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         tmp_path = tmp.name
                     pypandoc.convert_text(curent_full_res, 'docx', format='markdown', outputfile=tmp_path)
                     with open(tmp_path, "rb") as f:
-                        st.download_button("📝 분석 결과를 Word 파일로 다운로드 (.docx)", data=f.read(), file_name="AI_Analysis_Result.docx", use_container_width=True)
+                        st.download_button("📝 분석 결과를 Word 파일로 다운로드 (.docx)", data=f.read(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
                     import os; os.remove(tmp_path)
                 except:
                     from docx import Document
@@ -3418,7 +3418,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     doc = Document()
                     for line in curent_full_res.split('\n'): doc.add_paragraph(line)
                     doc.save(f_stream)
-                    st.download_button("📓 Word 다운로드 (텍스트 전용)", data=f_stream.getvalue(), file_name="AI_Analysis_Result.docx", use_container_width=True)
+                    st.download_button("📓 Word 다운로드 (텍스트 전용)", data=f_stream.getvalue(), file_name="AI_Analysis_Result.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
             st.divider()
             st.subheader("📂 데이터베이스(Notion)에 즉시 저장")
@@ -4037,7 +4037,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
 
     doc_stream = io.BytesIO()
     st.session_state.word_doc.save(doc_stream)
-    st.download_button("누적 워드 문서 다운로드 (.docx)", data=doc_stream.getvalue(), file_name="Diagrams.docx")
+    st.download_button("누적 워드 문서 다운로드 (.docx)", data=doc_stream.getvalue(), file_name="Diagrams.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 elif menu == "📝 수기 노트 AI 문서화":
     st.title("📝 수기 노트 AI 문서화")
@@ -4223,7 +4223,7 @@ elif menu == "📝 수기 노트 AI 문서화":
                     with open(tmp_path, "rb") as f:
                         docx_bytes = f.read()
                     os.remove(tmp_path)
-                    st.download_button("📥 분석 결과 Word 문서 다운로드 (.docx)", data=docx_bytes, file_name="Handwritten_Analysis.docx", key="hw_download_btn", use_container_width=True)
+                    st.download_button("📥 분석 결과 Word 문서 다운로드 (.docx)", data=docx_bytes, file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_btn", use_container_width=True)
                 except:
                     # Fallback: python-docx 엔진으로 직접 생성
                     import io
@@ -4234,7 +4234,7 @@ elif menu == "📝 수기 노트 AI 문서화":
                     for line in combined_res.split('\n'):
                         doc_fallback.add_paragraph(line)
                     doc_fallback.save(doc_stream)
-                    st.download_button("📥 분석 결과 통합 Word 문서 다운로드 (안전 모드)", data=doc_stream.getvalue(), file_name="Handwritten_Analysis.docx", key="hw_download_fallback", use_container_width=True)
+                    st.download_button("📥 분석 결과 통합 Word 문서 다운로드 (안전 모드)", data=doc_stream.getvalue(), file_name="Handwritten_Analysis.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key="hw_download_fallback", use_container_width=True)
 
 elif menu == "💬 실시간 AI 학술 상담 (ChatGPT 스타일)":
     st.markdown("<h1 class='main-header'>💬 실시간 AI 학술 상담 (ChatGPT 스타일)</h1>", unsafe_allow_html=True)
