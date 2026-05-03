@@ -558,14 +558,13 @@ def robust_generate_content(prompt, images=None, use_grounding=False):
                 last_er = e
                 err_str = str(e).lower()
                 if "429" in err_str or "quota" in err_str or "rate limit" in err_str:
-                    st.toast(f"⏳ API 할당량 초과(429). {retry_delay}초 대기 후 재시도... ({model_name})")
-                    time.sleep(retry_delay)
-                    retry_delay += 5  # 점진적으로 대기 시간 늘림 (Rate Limit 방어)
-                    
-                    # 계속해서 429가 뜨면 일일 할당량 소진이거나 계정 블락 상태이므로 즉시 중단
-                    if retry_delay > 15:
-                        st.error("🚨 구글/OpenAI API 무료 할당량(일일 한도 등)이 완전히 소진되어 더 이상 분석할 수 없습니다. 내일 다시 시도하시거나 유료 API 키를 등록해주세요.")
+                    if retry_delay >= 60:
+                        st.error("🚨 1분 이상 대기했으나 계속 거부당했습니다. API 무료 일일 할당량이 소진되었을 가능성이 큽니다. 내일 다시 시도하시거나 유료 API 키를 등록해주세요.")
                         return None
+                        
+                    st.toast(f"⏳ 분당 요청 한도(RPM) 도달 감지. 구글 서버 안정을 위해 {retry_delay}초 대기... ({model_name})")
+                    time.sleep(retry_delay)
+                    retry_delay += 45  # 첫 대기 후 분당 한도 리셋을 위해 45초 추가 대기 유도
                 else:
                     time.sleep(1) 
                 continue
