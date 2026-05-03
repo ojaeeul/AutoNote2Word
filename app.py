@@ -3086,13 +3086,15 @@ elif menu == "🎓 전문가용 LaTeX (Overleaf) 에디터":
                 st.error(f"워드 파일 변환 중 오류가 발생했습니다: {e}")
 
     if st.session_state.get("latex_docx_bytes"):
-        st.download_button(
-            "📘 완성된 Word 파일 다운로드", 
-            data=st.session_state.latex_docx_bytes, 
-            file_name="LaTeX_Equation.docx", mime="application/octet-stream", 
-            key="dl_latex_word", 
-            use_container_width=True
-        )
+        import base64
+        b64 = base64.b64encode(st.session_state.latex_docx_bytes).decode()
+        href = f'''
+        <a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{b64}" download="LaTeX_Equation.docx" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #10b981; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600;">
+            📘 완성된 Word 파일 다운로드
+        </a>
+        <br><br>
+        '''
+        st.markdown(href, unsafe_allow_html=True)
 
 elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석":
     if st.session_state.get("smart_analysis_active", False):
@@ -4037,7 +4039,16 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
 
     doc_stream = io.BytesIO()
     st.session_state.word_doc.save(doc_stream)
-    st.download_button("누적 워드 문서 다운로드 (.docx)", data=doc_stream.getvalue(), file_name="Diagrams.docx", mime="application/octet-stream")
+    
+    import base64
+    b64 = base64.b64encode(doc_stream.getvalue()).decode()
+    href = f'''
+    <a href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,{b64}" download="Diagrams.docx" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #3b82f6; border-radius: 0.25rem; text-decoration: none; text-align: center; width: 100%; font-weight: 600;">
+        누적 워드 문서 다운로드 (.docx)
+    </a>
+    <br><br>
+    '''
+    st.markdown(href, unsafe_allow_html=True)
 
 elif menu == "📝 수기 노트 AI 문서화":
     st.title("📝 수기 노트 AI 문서화")
