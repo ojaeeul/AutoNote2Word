@@ -1847,8 +1847,7 @@ def render_chem_ed_core_guide():
                     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
                     .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
                     .replace(/^- (.*$)/gm, '<li>$1</li>')
-                    .replace(/\
-/g, '<br>');
+                    .replace(/\\n/g, '<br>');
 
                 const docHtml = `
                     <!DOCTYPE html>
