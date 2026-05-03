@@ -1,0 +1,18 @@
+# Streamlit 보안 파일 보호
+.streamlit/secrets.toml
+
+# 파이썬 캐시 및 임시 파일
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+
+# 앱 임시 업로드 및 상태 파일
+temp_uploads/
+workspace_state.json
+streamlit.log
+
+# 생성된 보고서 및 임시 파일
+*.docx
+temp.md
+Converted_Note.docx
