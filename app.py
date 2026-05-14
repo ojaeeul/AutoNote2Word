@@ -1,8 +1,8 @@
-
+, os
 import datetime
 import re
 import streamlit as st
-import platform
+import platform, os
 import subprocess
 
 def open_file_in_os(filepath):
@@ -63,7 +63,7 @@ def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
-    # Show login UI
+  # Show login UI
     st.markdown("<h1 style='text-align: center; color: #4F46E5; margin-top: 10vh;'>🔒 보안 접속</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; margin-bottom: 2rem;'>접근 권한이 필요합니다. 아이디와 비밀번호를 입력해주세요.</p>", unsafe_allow_html=True)
     
