@@ -78,14 +78,12 @@ def check_password():
     return False
 
 # if not check_password():
-#     st.stop() 
-pass
+    st.stop()
 
 import time
 import openai
 import streamlit.components.v1 as components
-
-# --- Premium UI/UX Design System Injection ---
+--- Premium UI/UX Design System Injection ---
 def inject_premium_design():
     st.markdown("""
         <style>
