@@ -7,12 +7,13 @@ import subprocess
 
 def open_file_in_os(filepath):
     """지정된 파일을 해당 OS의 기본 프로그램(MS Word 등)으로 엽니다."""
-    try:
+  try:
         import subprocess
         if platform.system() == "Darwin":       # macOS
             subprocess.Popen(["open", filepath])
         elif platform.system() == "Windows":    # Windows
-            os.startfile(filepath)
+  import streamlit.components.v1 as components
+os.startfile(filepath)
         else:                                   # linux variants
             subprocess.Popen(["xdg-open", filepath])
         return True
