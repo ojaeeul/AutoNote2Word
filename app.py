@@ -860,7 +860,13 @@ if "notion_db" not in st.session_state:
 
 """, unsafe_allow_html=True)
 
-plt.rcParams['font.family'] = 'sans-serif'
+import platform
+if platform.system() == 'Windows':
+    plt.rcParams['font.family'] = 'Malgun Gothic'
+elif platform.system() == 'Darwin':
+    plt.rcParams['font.family'] = 'AppleGothic'
+else:
+    plt.rcParams['font.family'] = 'NanumGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
 # Floating Scroll Buttons
@@ -5537,6 +5543,12 @@ elif menu == "📝 수기 노트 AI 문서화":
                             res = robust_generate_content(hw_ocr_prompt, images=[hw_imgs[p_idx]], use_grounding=False)
                             
                             if res:
+                                import os
+                                img_dir = os.path.abspath("hw_cache_images")
+                                os.makedirs(img_dir, exist_ok=True)
+                                img_path = os.path.join(img_dir, f"{q_key}.png")
+                                hw_imgs[p_idx].save(img_path)
+                                
                                 st.session_state.hw_analysis_buffer[q_key] = res
                                 st.session_state.word_doc.add_paragraph(res)
                                 save_state()
@@ -5601,6 +5613,10 @@ elif menu == "📝 수기 노트 AI 문서화":
                         label = f"📝 수기 분석 ({k})"
                     
                     with st.expander(label, expanded=False):
+                        import os
+                        img_path = os.path.abspath(f"hw_cache_images/{k}.png")
+                        if os.path.exists(img_path):
+                            st.image(img_path, use_container_width=True)
                         st.markdown(st.session_state.hw_analysis_buffer[k])
                 
                 with col_trash:
@@ -5610,7 +5626,15 @@ elif menu == "📝 수기 노트 AI 문서화":
                         st.rerun()
 
             if hw_keys:
-                combined_res = "\n---\n\n".join([st.session_state.hw_analysis_buffer[k] for k in hw_keys])
+                combined_res_parts = []
+                import os
+                for k in hw_keys:
+                    img_path = os.path.abspath(f"hw_cache_images/{k}.png")
+                    if os.path.exists(img_path):
+                        combined_res_parts.append(f"![원본 이미지]({img_path})\n\n{st.session_state.hw_analysis_buffer[k]}")
+                    else:
+                        combined_res_parts.append(st.session_state.hw_analysis_buffer[k])
+                combined_res = "\n---\n\n".join(combined_res_parts)
 
                 # Word 다운로드 섹션 통합
                 if st.button("🚀 분석 결과를 Word로 변환하기", key="hw_convert_btn", use_container_width=True):
@@ -5632,7 +5656,13 @@ elif menu == "📝 수기 노트 AI 문서화":
                             doc_fallback = Document()
                             doc_fallback.add_heading("수기 노트 AI 분석 결과", 0)
                             for line in combined_res.split('\n'):
-                                doc_fallback.add_paragraph(line)
+                                if line.startswith("![원본 이미지]("):
+                                    img_p = line.split("(")[1].split(")")[0]
+                                    if os.path.exists(img_p):
+                                        from docx.shared import Inches
+                                        doc_fallback.add_picture(img_p, width=Inches(6.0))
+                                else:
+                                    doc_fallback.add_paragraph(line)
                             doc_fallback.save(doc_stream)
                             st.session_state.hw_docx_bytes = doc_stream.getvalue()
                         st.success("✅ 변환이 완료되었습니다! 아래에서 다운로드하세요.")
