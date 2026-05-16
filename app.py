@@ -108,9 +108,8 @@ def check_password():
             st.error("아이디 또는 비밀번호가 일치하지 않습니다.")
     return False
 
-# if not check_password():
-#     st.stop() 
-pass
+if not check_password():
+    st.stop()
 
 import time
 import openai
@@ -4138,7 +4137,9 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 1. **순차적 논리**: {target_label}에만 집중하여 가장 정밀한 정답과 해설을 도출하십시오.
                 2. **참조 데이터 기준 압도적 확장**: 제공된 참조 정답지의 정답(수치, 결론)은 100% 일치시키되, 해설의 깊이와 분량, 배경지식, 시각적 시뮬레이션 데이터는 참조 정답지를 아득히 초월할 정도로 훨씬 더 상세하고 방대하게 추가 작성하십시오.
                 3. **외부 링크 절대 금지**: 모든 외부 URL을 배제하십시오.
-                4. **수식 렌더링 절대 강제**: 모든 수학/화학 수식은 예외 없이 마크다운 블록형 LaTeX 문법인 `$$ ... $$` 기호로 완벽하게 감싸서 출력하십시오.
+                4. **수식 렌더링 에러(빨간 글씨) 원천 차단 규칙**: 
+                   - 수학/화학 수식은 `$$ ... $$` 기호로 감싸되, **수식 내부에 한글을 절대 포함하지 마십시오.** (`\text{한글}`, `\fbox{한글}` 사용 금지. 한글 설명은 수식 밖 일반 텍스트로 빼세요.)
+                   - **절대 금지**: `\begin{tikzpicture}`, `\begin{gathered}`, 복잡한 `\begin{array}` 등 웹에서 호환되지 않는 고급 LaTeX 패키지는 절대 사용하지 마십시오.
                 5. **시각 자료 완벽 복원 및 강제 렌더링 (Visual Rendering)**: 풀이 내용이나 대상에 **3D 격자, 분자 구조식, 양자역학 그래프, 루이스 전자점식, 분자 오비탈 시각화, 기본 도식 및 기하 도형, 2D 분자 구조 / 선구조식, 표, 그래프** 중 하나라도 포함된다면 절대 생략하지 마십시오!
                    **[초비상 절대 엄수: 양자역학 파동함수 및 각종 그래프 크기 대폭 확대]** 양자역학의 파동함수(Wavefunction), 1차원 상자 속 입자(Particle in a box) 모형, 파동/함수 그래프 등을 ASCII 아트로 그릴 때는 **상하좌우 크기를 기존보다 최소 2~3배 이상 대폭 확장하여 매우 큼직하고 시원하게(Large-scale) 그리십시오.** 사용자가 진폭과 노드의 위치를 직관적으로 바로 파악할 수 있도록 x축, y축의 간격을 넓게 잡아야 하며, 너무 작고 옹졸하게 그리는 것은 절대 금지됩니다.
                    **[초비상 절대 엄수: 분자 구조 및 결합 표시 방식]**
@@ -5418,7 +5419,8 @@ elif menu == "📝 수기 노트 AI 문서화":
     if uploaded_files:
 
 
-        if start_conversion:
+        if start_conversion or st.session_state.get("hw_conversion_active", False):
+            st.session_state.hw_conversion_active = True
             if not api_key: st.error("API 키 입력 필수!")
             else:
                 genai.configure(api_key=api_key)
@@ -5518,10 +5520,13 @@ elif menu == "📝 수기 노트 AI 문서화":
 **[수행 지침: 소문 반복 템플릿]**
 - 각 소문(a, b, c, d, e, f, g...)마다 아래 형식을 반드시 반복하세요:
   1. **(소문 x) 질문 원문 전사**
-  2. **원본 시각화 재현**: (도표, 그림, 수식 등을 Markdown/LaTeX로 똑같이 복제)
-  3. **내용 전사**: (원본 텍스트 그대로)
+  2. **원본 시각화 재현**: 도표나 그림은 반드시 일반 텍스트 기반 ASCII 아트나 Markdown 표로만 재현하십시오.
+  3. **내용 전사**: (원본 텍스트 그대로되, 아래의 빨간 글씨 에러 방지 규칙을 엄수할 것)
 
 - 대문 하위에 소문들을 그룹으로 묶어 배치하고, 건너뛰는 번호가 없도록 하세요.
+- **[웹 렌더링 에러(빨간색 글씨) 방지 절대 규칙]**:
+  1. 수식 내부에 한글을 쓰면 에러가 나므로 `\text{한글}`이나 `\fbox{한글}` 대신 수식 밖으로 빼서 일반 텍스트로 적으세요.
+  2. `\begin{tikzpicture}`, `\begin{gathered}` 등 지원되지 않는 복잡한 LaTeX 환경은 절대 사용 금지입니다. 도형이나 분자 구조는 오직 키보드 특수기호(ASCII)만 사용해서 그리세요.
 
 ### 📌 {progress_label} 디지털 문서화 결과 (그룹화 완료)"""
                             
@@ -5536,9 +5541,25 @@ elif menu == "📝 수기 노트 AI 문서화":
                                 st.warning(f"⚠️ {p_idx+1}페이지 분석 중 응답이 없습니다. 잠시 후 다시 시도합니다.")
                                 time.sleep(5)
                         except Exception as e:
-                            st.error(f"❌ {p_idx+1}페이지 분석 중 오류: {e}")
-                            break
-                    
+                            err_msg = str(e)
+                            if "QUOTA_EXHAUSTED" in err_msg or "ResourceExhausted" in err_msg or "429" in err_msg:
+                                import time, re
+                                match = re.search(r'QUOTA_EXHAUSTED:(\d+\.?\d*)', err_msg)
+                                wait_time = int(float(match.group(1))) if match else 65
+                                msg = st.empty()
+                                for i in range(wait_time, 0, -1):
+                                    msg.warning(f"🚫 API 한도 초과. 멈춤 방지를 위해 {i}초간 강제 휴식 후 자동 재개합니다...")
+                                    time.sleep(1)
+                                msg.empty()
+                                st.rerun()
+                            
+                            st.error(f"❌ {p_idx+1}페이지 분석 중 치명적 오류 (스킵 후 다음 진행): {e}")
+                            st.session_state.hw_analysis_buffer[q_key] = f"⚠️ {p_idx+1}페이지 오류로 스킵됨: {e}"
+                            save_state()
+                            continue
+                            
+                    st.session_state.hw_conversion_active = False
+                    st.success("🎉 모든 페이지의 분석이 완료되었습니다!")
 
 
 
