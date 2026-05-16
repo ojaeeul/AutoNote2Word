@@ -84,7 +84,10 @@ def check_password():
         
         if st.session_state["username"] == expected_id and st.session_state["password"] == expected_pw:
             st.session_state["password_correct"] = True
-            st.query_params["auth"] = "ojaeeul_verified" # 새로고침해도 풀리지 않도록 URL에 토큰 삽입
+            if st.session_state.get("auto_login"):
+                st.query_params["auth"] = "ojaeeul_verified" # 새로고침해도 풀리지 않도록 URL에 토큰 삽입
+            elif "auth" in st.query_params:
+                del st.query_params["auth"]
             del st.session_state["password"]  # 보안을 위해 세션에서 비밀번호 삭제
             del st.session_state["username"]
         else:
@@ -102,6 +105,7 @@ def check_password():
         with st.form(key='login_form'):
             st.text_input("아이디 (ID)", key="username")
             st.text_input("비밀번호 (Password)", type="password", key="password")
+            st.checkbox("☑️ 자동 로그인 유지 (즐겨찾기용 주소 생성)", value=True, key="auto_login")
             st.form_submit_button("로그인", on_click=password_entered, use_container_width=True)
             
         if "password_correct" in st.session_state and not st.session_state["password_correct"]:
@@ -4138,7 +4142,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 2. **참조 데이터 기준 압도적 확장**: 제공된 참조 정답지의 정답(수치, 결론)은 100% 일치시키되, 해설의 깊이와 분량, 배경지식, 시각적 시뮬레이션 데이터는 참조 정답지를 아득히 초월할 정도로 훨씬 더 상세하고 방대하게 추가 작성하십시오.
                 3. **외부 링크 절대 금지**: 모든 외부 URL을 배제하십시오.
                 4. **수식 렌더링 에러(빨간 글씨) 원천 차단 규칙**: 
-                   - 수학/화학 수식은 `$$ ... $$` 기호로 감싸되, **수식 내부에 한글을 절대 포함하지 마십시오.** (`\text{한글}`, `\fbox{한글}` 사용 금지. 한글 설명은 수식 밖 일반 텍스트로 빼세요.)
+                   - 수학/화학 수식은 `$$ ... $$` 기호로 감싸되, **수식 내부에 한글을 절대 포함하지 마십시오.** (`\text{{한글}}`, `\fbox{{한글}}` 사용 금지. 한글 설명은 수식 밖 일반 텍스트로 빼세요.)
                    - **절대 금지**: `\begin{tikzpicture}`, `\begin{gathered}`, 복잡한 `\begin{array}` 등 웹에서 호환되지 않는 고급 LaTeX 패키지는 절대 사용하지 마십시오.
                 5. **시각 자료 완벽 복원 및 강제 렌더링 (Visual Rendering)**: 풀이 내용이나 대상에 **3D 격자, 분자 구조식, 양자역학 그래프, 루이스 전자점식, 분자 오비탈 시각화, 기본 도식 및 기하 도형, 2D 분자 구조 / 선구조식, 표, 그래프** 중 하나라도 포함된다면 절대 생략하지 마십시오!
                    **[초비상 절대 엄수: 양자역학 파동함수 및 각종 그래프 크기 대폭 확대]** 양자역학의 파동함수(Wavefunction), 1차원 상자 속 입자(Particle in a box) 모형, 파동/함수 그래프 등을 ASCII 아트로 그릴 때는 **상하좌우 크기를 기존보다 최소 2~3배 이상 대폭 확장하여 매우 큼직하고 시원하게(Large-scale) 그리십시오.** 사용자가 진폭과 노드의 위치를 직관적으로 바로 파악할 수 있도록 x축, y축의 간격을 넓게 잡아야 하며, 너무 작고 옹졸하게 그리는 것은 절대 금지됩니다.
@@ -5525,7 +5529,7 @@ elif menu == "📝 수기 노트 AI 문서화":
 
 - 대문 하위에 소문들을 그룹으로 묶어 배치하고, 건너뛰는 번호가 없도록 하세요.
 - **[웹 렌더링 에러(빨간색 글씨) 방지 절대 규칙]**:
-  1. 수식 내부에 한글을 쓰면 에러가 나므로 `\text{한글}`이나 `\fbox{한글}` 대신 수식 밖으로 빼서 일반 텍스트로 적으세요.
+  1. 수식 내부에 한글을 쓰면 에러가 나므로 `\text{{한글}}`이나 `\fbox{{한글}}` 대신 수식 밖으로 빼서 일반 텍스트로 적으세요.
   2. `\begin{tikzpicture}`, `\begin{gathered}` 등 지원되지 않는 복잡한 LaTeX 환경은 절대 사용 금지입니다. 도형이나 분자 구조는 오직 키보드 특수기호(ASCII)만 사용해서 그리세요.
 
 ### 📌 {progress_label} 디지털 문서화 결과 (그룹화 완료)"""
@@ -5577,7 +5581,14 @@ elif menu == "📝 수기 노트 AI 문서화":
     # --- 상시 수기 분석 결과 표시 (새로고침 대응) ---
     if st.session_state.get("hw_analysis_buffer"):
         with st.container(border=True):
-            st.markdown("### 📋 수기 노트 AI 분석 결과")
+            col_t, col_btn = st.columns([0.8, 0.2])
+            with col_t:
+                st.markdown("### 📋 수기 노트 AI 분석 결과")
+            with col_btn:
+                if st.button("🗑️ 전체 초기화", use_container_width=True):
+                    st.session_state.hw_analysis_buffer = {}
+                    save_state()
+                    st.rerun()
             # 개별 페이지별 결과 표시 및 관리
             hw_keys = sorted([k for k in st.session_state.hw_analysis_buffer.keys() if k.startswith("hw_page_")])
             for k in hw_keys:
