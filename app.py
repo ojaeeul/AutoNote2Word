@@ -866,7 +866,16 @@ if platform.system() == 'Windows':
 elif platform.system() == 'Darwin':
     plt.rcParams['font.family'] = 'AppleGothic'
 else:
-    plt.rcParams['font.family'] = 'NanumGothic'
+    import os
+    import matplotlib.font_manager as fm
+    font_url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+    font_path = "NanumGothic.ttf"
+    if not os.path.exists(font_path):
+        import urllib.request
+        urllib.request.urlretrieve(font_url, font_path)
+    fm.fontManager.addfont(font_path)
+    font_prop = fm.FontProperties(fname=font_path)
+    plt.rcParams['font.family'] = font_prop.get_name()
 plt.rcParams['axes.unicode_minus'] = False
 
 # Floating Scroll Buttons
@@ -2717,7 +2726,7 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
             
             g_dl_placeholder = g_btn2.empty()
 
-            if generate_graph:
+            if True: # 항상 실시간 미리보기를 위해 렌더링
                 try:
                     import pandas as pd
                     import matplotlib.pyplot as plt
@@ -2873,25 +2882,27 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
 
                         ax.set_title(g_title, fontsize=15, fontweight='bold', pad=20, color='#1E293B')
 
-                        buf = io.BytesIO()
-                        plt.savefig(buf, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-                        buf.seek(0)
-                        st.image(buf)
-                        st.session_state.word_doc.add_picture(buf, width=Inches(5.0))
-                        st.success("🎉 세련된 그래프가 생성되어 전체 워드 문서에 성공적으로 추가되었습니다!")
+                        st.pyplot(fig) # 실시간 라이브 미리보기
 
-                        # 단독 다운로드를 위한 독립 워드 문서 생성
-                        from docx import Document
-                        from docx.shared import Inches
-                        temp_doc = Document()
-                        temp_doc.add_heading(g_title if g_title else "그래프", level=1)
-                        buf.seek(0)
-                        temp_doc.add_picture(buf, width=Inches(6.0))
-                        doc_io = io.BytesIO()
-                        temp_doc.save(doc_io)
-                        doc_io.seek(0)
-                        st.session_state.graph_dl_bytes = doc_io.read()
-                        st.info("💡 우측 상단의 '단독 워드 다운로드' 버튼이 활성화되었습니다!")
+                        if generate_graph:
+                            buf = io.BytesIO()
+                            fig.savefig(buf, format='png', bbox_inches='tight', dpi=300, facecolor='white')
+                            buf.seek(0)
+                            st.session_state.word_doc.add_picture(buf, width=Inches(5.0))
+                            st.success("🎉 세련된 그래프가 생성되어 전체 워드 문서에 성공적으로 추가되었습니다!")
+
+                            # 단독 다운로드를 위한 독립 워드 문서 생성
+                            from docx import Document
+                            from docx.shared import Inches
+                            temp_doc = Document()
+                            temp_doc.add_heading(g_title if g_title else "그래프", level=1)
+                            buf.seek(0)
+                            temp_doc.add_picture(buf, width=Inches(6.0))
+                            doc_io = io.BytesIO()
+                            temp_doc.save(doc_io)
+                            doc_io.seek(0)
+                            st.session_state.graph_dl_bytes = doc_io.read()
+                            st.info("💡 우측 상단의 '단독 워드 다운로드' 버튼이 활성화되었습니다!")
                 except Exception as e:
                     st.error(f"데이터 형식을 확인하거나 다른 템플릿을 선택하세요: {e}")
 

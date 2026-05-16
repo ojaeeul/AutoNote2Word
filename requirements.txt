@@ -9,3 +9,4 @@ numpy
 pandas
 pypandoc_binary
 pyhwp
+streamlit-drawable-canvas

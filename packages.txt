@@ -1,1 +1,2 @@
 pandoc
+fonts-nanum
