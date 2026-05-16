@@ -5,6 +5,31 @@ import streamlit as st
 import platform
 import subprocess
 
+# --- [Streamlit Compatibility Patch for streamlit-drawable-canvas] ---
+try:
+    import streamlit.elements.image as st_image
+    if not hasattr(st_image, 'image_to_url'):
+        def patched_image_to_url(image, *args, **kwargs):
+            import io
+            import base64
+            from PIL import Image
+            pil_img = None
+            if hasattr(image, "save"): pil_img = image
+            elif isinstance(image, (list, tuple, bytes)):
+                buf = io.BytesIO(image)
+                pil_img = Image.open(buf)
+            else:
+                try: pil_img = Image.fromarray(image)
+                except: return ""
+            pil_img = pil_img.resize((600, 400), Image.LANCZOS)
+            buf = io.BytesIO()
+            pil_img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            return f"data:image/png;base64,{b64}"
+        st_image.image_to_url = patched_image_to_url
+except ImportError:
+    pass
+
 def open_file_in_os(filepath):
     """지정된 파일을 해당 OS의 기본 프로그램(MS Word 등)으로 엽니다."""
     try:
@@ -4169,11 +4194,6 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                    - 2D 분자 구조, 선구조식, 루이스 전자점식, 화학 결합을 그릴 때 **절대로 Mermaid graph(노드와 엣지를 연결하는 방식, 예: A---B, subgraph 등)를 사용하지 마십시오.** 화학 구조를 Mermaid 네트워크 그래프로 그리는 것은 절대 금지됩니다.
                    - 대신 반드시 **정교한 텍스트 기반 ASCII 아트**를 사용하여 원자들의 실제 2D 배치와 결합(단일, 이중 결합 등), 그리고 비공유 전자쌍을 시각적으로 정확하게 직관적으로 그려내야 합니다.
                    - **[ASCII 선구조식 예시]**
-                        Cl  H
-                         \ /
-                          C ㅡ C ㅡ H
-                         / \
-                        F   H
                    - **[ASCII 루이스 전자점식 예시 (비공유 전자쌍 표시 필수)]**
                          ..
                        : O :
@@ -4189,6 +4209,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 7. **초고도화 분량 극대화 및 반복 버그 절대 금지**: 모든 분석은 석/박사 학위 논문 수준으로 얻을 수 있는 모든 물리/화학적 데이터, 개념, 배경 지식을 끌어모아 **매우 길고 깊이 있게(최소 3000자 이상) 해설**하십시오. 단, **동일한 문장이나 단어가 비정상적으로 반복되는 기계적 붕괴(Model Collapse) 현상이 발생하면 즉시 실패 처리되므로**, 반드시 창의적이고 다양한 고급 학술 어휘를 사용하여 풍부하고 생동감 있게 작성하십시오.
                 8. **시각적/구조적 고도화**: 단순 텍스트 나열을 피하고, 다층적 구조(서론-본론-결론, 단계별 유도 과정) 및 고급 시각적 포맷(마크다운 표, 수식 배열, 다이어그램)을 복합적으로 사용하여 **가장 압도적이고 정밀한 퀄리티의 풀이 리포트**를 완성하십시오.
                 """
+                    
                             res = robust_generate_content(solve_prompt, images=[cur_img] if cur_img else None, use_grounding=False)
                             if not res:
                                 raise Exception("QUOTA_EXHAUSTED")
@@ -4296,7 +4317,7 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
         if not st.session_state.get("gemini_api_key"):
             st.error("Gemini API 키가 필요합니다. 왼쪽 사이드바 하단에 키를 입력해주세요.")
         else:
-            with st.spinner("AI가 이미지를 분석하여 코드로 역설계 중입니다..."):
+            with st.spinner("AI가 이미지를 분석하여 코드로 역설계 중입니다..."): 
                 try:
                     import google.generativeai as genai
                     import json
@@ -4507,421 +4528,408 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
         render_download_and_open_buttons("AI 비전 전체 작업 내용", st.session_state.vision_docx_bytes, "SNU_Chem_Report_AI_Vision.docx", "vision_dl_persistent")
 
     st.markdown("---")
-
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.subheader("1. 3D 격자 생성")
-        cell_options = ["Simple Cubic (SC)", "Body-Centered (BCC)", "Face-Centered (FCC)", "HCP (Hexagonal)", "NaCl (Rock Salt)", "CsCl (BCC)", "CaF2 (Fluorite)", "Rhombohedral"]
-
-        def on_cell_choice_change():
-            if st.session_state.cell_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_coords_val = get_preset_custom_data("cell", st.session_state.get("cell_choice_select", ""))
-                st.session_state.cell_text_key_counter += 1
-
-        def sync_cell_mode():
-            if st.session_state.cell_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_coords_val = get_preset_custom_data("cell", st.session_state.get("cell_choice_select", ""))
-                st.session_state.cell_text_key_counter += 1
-
-        cell_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)"], horizontal=True, key="cell_mode_radio", on_change=sync_cell_mode)
-
-        label = "3D 격자 선택:" if cell_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-        cell_choice_raw = st.selectbox(label, cell_options, key="cell_choice_select", on_change=on_cell_choice_change)
-
-        if cell_mode == "자동 (프리셋 선택)":
-            cell_choice = cell_choice_raw
-        else:
-            cell_choice = "직접 좌표 입력 (Custom)"
-        lattice_size = st.slider("격자 반복 횟수 (Size):", 1, 3, 1, help="단위 세포를 몇 번 반복해서 쌓을지 결정합니다.")
-        atom_rad = st.slider("원자 크기 (Atom Size):", 0.05, 0.5, 0.18, 0.01, help="원자의 반지름을 조절합니다.")
-
-        custom_coords = ""
-        if cell_choice == "직접 좌표 입력 (Custom)":
-            if "custom_coords_val" not in st.session_state:
-                st.session_state.custom_coords_val = "0,0,0,blue\n1,1,1,red"
-            custom_coords = st.text_area("좌표 입력 (x,y,z,색상):", value=st.session_state.custom_coords_val, key=f"custom_coords_val_{st.session_state.cell_text_key_counter}", help="줄바꿈으로 여러 좌표를 입력할 수 있습니다. (Ctrl+Enter로 적용)")
-            st.session_state.custom_coords_val = custom_coords
-        if st.button("3D 큐브 그리기"):
-            img_stream, errors = draw_unit_cell(cell_choice, lattice_size, atom_rad, custom_coords)
-            if errors:
-                for er in errors: st.error(er)
-            img_stream.seek(0)
-            st.image(img_stream)
-            img_stream.seek(0)
-            st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-
-        up_3d = st.file_uploader("📂 3D 격자 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_3d")
-        if up_3d and st.button("워드에 수동 추가 (3D)"):
-            up_3d.seek(0)
-            st.image(up_3d)
-            up_3d.seek(0)
-            st.session_state.word_doc.add_picture(up_3d, width=Inches(4.0))
-            st.success("워드에 추가되었습니다!")
-        st.markdown("---")
-        st.subheader("2. 양자역학 그래프")
-        graph_options = ["1D Box 파동함수 (n=1,2,3)", "2s 오비탈 확률 밀도"]
-        def on_graph_choice_change():
-            if st.session_state.graph_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_expr_val = get_preset_custom_data("graph", st.session_state.get("graph_choice_select", ""))
-                st.session_state.graph_text_key_counter += 1
-
-        def sync_graph_mode():
-            if st.session_state.graph_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_expr_val = get_preset_custom_data("graph", st.session_state.get("graph_choice_select", ""))
-                st.session_state.graph_text_key_counter += 1
-
-        graph_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)"], horizontal=True, key="graph_mode_radio", on_change=sync_graph_mode)
-
-        label = "양자역학 그래프:" if graph_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-        graph_choice_raw = st.selectbox(label, graph_options, key="graph_choice_select", on_change=on_graph_choice_change)
-
-        if graph_mode == "자동 (프리셋 선택)":
-            graph_choice = graph_choice_raw
-        else:
-            graph_choice = "직접 수식 입력 (Custom)"
-
-        custom_expr = "sin(x)"
-        x_min, x_max = 0.0, 10.0
-
-        if graph_choice == "직접 수식 입력 (Custom)":
-            if "custom_expr_val" not in st.session_state:
-                st.session_state.custom_expr_val = "sin(x)*exp(-x/5)"
-            custom_expr = st.text_input("원하는 수식을 입력하세요 (x에 대한 함수):", value=st.session_state.custom_expr_val, key=f"custom_expr_val_{st.session_state.graph_text_key_counter}", help="예: sin(x), x^2, exp(-x)")
-            st.session_state.custom_expr_val = custom_expr
-            col_x1, col_x2 = st.columns(2)
-            x_min = col_x1.number_input("x 최솟값", value=0.0)
-            x_max = col_x2.number_input("x 최댓값", value=15.0)
-
-        if st.button("그래프 그리기"):
-            img_stream = draw_quantum_graph(graph_choice, custom_expr, x_min, x_max)
-            img_stream.seek(0)
-            st.image(img_stream)
-            img_stream.seek(0)
-            st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-
-        up_graph = st.file_uploader("📂 그래프 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_graph")
-        if up_graph and st.button("워드에 수동 추가 (그래프)"):
-            up_graph.seek(0)
-            st.image(up_graph)
-            up_graph.seek(0)
-            st.session_state.word_doc.add_picture(up_graph, width=Inches(4.0))
-            st.success("워드에 추가되었습니다!")
-
-        st.markdown("---")
-        st.subheader("6. 분자 오비탈 시각화 (3D)")
-        orbital_options = ["NO3- (질산 이온)", "HNO3 (질산)", "C2H4 (에텐)"]
-        def on_orbital_choice_change():
-            if st.session_state.orbital_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_orbital_data_val = get_preset_custom_data("orbital", st.session_state.get("orbital_choice_select", ""))
-                st.session_state.orbital_text_key_counter += 1
-
-        def sync_orbital_mode():
-            if st.session_state.orbital_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_orbital_data_val = get_preset_custom_data("orbital", st.session_state.get("orbital_choice_select", ""))
-                st.session_state.orbital_text_key_counter += 1
-
-        orbital_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="orbital_mode_radio", on_change=sync_orbital_mode)
-
-        if orbital_mode == "이미지 직접 업로드":
-            uploaded_orbital = st.file_uploader("분자 오비탈 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="orbital_upload")
-            if st.button("업로드한 이미지 워드에 추가", key="orbital_upload_btn"):
-                if uploaded_orbital is not None:
-                    import io
-                    img_stream = io.BytesIO(uploaded_orbital.read())
+    with st.expander("🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석", expanded=False):
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.subheader("1. 3D 격자 생성")
+            cell_options = ["Simple Cubic (SC)", "Body-Centered (BCC)", "Face-Centered (FCC)", "HCP (Hexagonal)", "NaCl (Rock Salt)", "CsCl (BCC)", "CaF2 (Fluorite)", "Rhombohedral"]
+    
+            def on_cell_choice_change():
+                if st.session_state.cell_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_coords_val = get_preset_custom_data("cell", st.session_state.get("cell_choice_select", ""))
+                    st.session_state.cell_text_key_counter += 1
+    
+            def sync_cell_mode():
+                if st.session_state.cell_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_coords_val = get_preset_custom_data("cell", st.session_state.get("cell_choice_select", ""))
+                    st.session_state.cell_text_key_counter += 1
+    
+            cell_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)"], horizontal=True, key="cell_mode_radio", on_change=sync_cell_mode)
+    
+            label = "3D 격자 선택:" if cell_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+            cell_choice_raw = st.selectbox(label, cell_options, key="cell_choice_select", on_change=on_cell_choice_change)
+    
+            if cell_mode == "자동 (프리셋 선택)":
+                cell_choice = cell_choice_raw
+            else:
+                cell_choice = "직접 좌표 입력 (Custom)"
+            lattice_size = st.slider("격자 반복 횟수 (Size):", 1, 3, 1, help="단위 세포를 몇 번 반복해서 쌓을지 결정합니다.")
+            atom_rad = st.slider("원자 크기 (Atom Size):", 0.05, 0.5, 0.18, 0.01, help="원자의 반지름을 조절합니다.")
+    
+            custom_coords = ""
+            if cell_choice == "직접 좌표 입력 (Custom)":
+                if "custom_coords_val" not in st.session_state:
+                    st.session_state.custom_coords_val = "0,0,0,blue\n1,1,1,red"
+                custom_coords = st.text_area("좌표 입력 (x,y,z,색상):", value=st.session_state.custom_coords_val, key=f"custom_coords_val_{st.session_state.cell_text_key_counter}", help="줄바꿈으로 여러 좌표를 입력할 수 있습니다. (Ctrl+Enter로 적용)")
+                st.session_state.custom_coords_val = custom_coords
+            if st.button("3D 큐브 그리기"):
+                img_stream, errors = draw_unit_cell(cell_choice, lattice_size, atom_rad, custom_coords)
+                if errors:
+                    for er in errors: st.error(er)
+                img_stream.seek(0)
+                st.image(img_stream)
+                img_stream.seek(0)
+                st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
+    
+            up_3d = st.file_uploader("📂 3D 격자 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_3d")
+            if up_3d and st.button("워드에 수동 추가 (3D)"):
+                up_3d.seek(0)
+                st.image(up_3d)
+                up_3d.seek(0)
+                st.session_state.word_doc.add_picture(up_3d, width=Inches(4.0))
+                st.success("워드에 추가되었습니다!")
+            st.markdown("---")
+            st.subheader("2. 양자역학 그래프")
+            graph_options = ["1D Box 파동함수 (n=1,2,3)", "2s 오비탈 확률 밀도"]
+            def on_graph_choice_change():
+                if st.session_state.graph_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_expr_val = get_preset_custom_data("graph", st.session_state.get("graph_choice_select", ""))
+                    st.session_state.graph_text_key_counter += 1
+    
+            def sync_graph_mode():
+                if st.session_state.graph_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_expr_val = get_preset_custom_data("graph", st.session_state.get("graph_choice_select", ""))
+                    st.session_state.graph_text_key_counter += 1
+    
+            graph_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)"], horizontal=True, key="graph_mode_radio", on_change=sync_graph_mode)
+    
+            label = "양자역학 그래프:" if graph_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+            graph_choice_raw = st.selectbox(label, graph_options, key="graph_choice_select", on_change=on_graph_choice_change)
+    
+            if graph_mode == "자동 (프리셋 선택)":
+                graph_choice = graph_choice_raw
+            else:
+                graph_choice = "직접 수식 입력 (Custom)"
+    
+            custom_expr = "sin(x)"
+            x_min, x_max = 0.0, 10.0
+    
+            if graph_choice == "직접 수식 입력 (Custom)":
+                if "custom_expr_val" not in st.session_state:
+                    st.session_state.custom_expr_val = "sin(x)*exp(-x/5)"
+                custom_expr = st.text_input("원하는 수식을 입력하세요 (x에 대한 함수):", value=st.session_state.custom_expr_val, key=f"custom_expr_val_{st.session_state.graph_text_key_counter}", help="예: sin(x), x^2, exp(-x)")
+                st.session_state.custom_expr_val = custom_expr
+                col_x1, col_x2 = st.columns(2)
+                x_min = col_x1.number_input("x 최솟값", value=0.0)
+                x_max = col_x2.number_input("x 최댓값", value=15.0)
+    
+            if st.button("그래프 그리기"):
+                img_stream = draw_quantum_graph(graph_choice, custom_expr, x_min, x_max)
+                img_stream.seek(0)
+                st.image(img_stream)
+                img_stream.seek(0)
+                st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
+    
+            up_graph = st.file_uploader("📂 그래프 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_graph")
+            if up_graph and st.button("워드에 수동 추가 (그래프)"):
+                up_graph.seek(0)
+                st.image(up_graph)
+                up_graph.seek(0)
+                st.session_state.word_doc.add_picture(up_graph, width=Inches(4.0))
+                st.success("워드에 추가되었습니다!")
+    
+            st.markdown("---")
+            st.subheader("6. 분자 오비탈 시각화 (3D)")
+            orbital_options = ["NO3- (질산 이온)", "HNO3 (질산)", "C2H4 (에텐)"]
+            def on_orbital_choice_change():
+                if st.session_state.orbital_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_orbital_data_val = get_preset_custom_data("orbital", st.session_state.get("orbital_choice_select", ""))
+                    st.session_state.orbital_text_key_counter += 1
+    
+            def sync_orbital_mode():
+                if st.session_state.orbital_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_orbital_data_val = get_preset_custom_data("orbital", st.session_state.get("orbital_choice_select", ""))
+                    st.session_state.orbital_text_key_counter += 1
+    
+            orbital_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="orbital_mode_radio", on_change=sync_orbital_mode)
+    
+            if orbital_mode == "이미지 직접 업로드":
+                uploaded_orbital = st.file_uploader("분자 오비탈 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="orbital_upload")
+                if st.button("업로드한 이미지 워드에 추가", key="orbital_upload_btn"):
+                    if uploaded_orbital is not None:
+                        import io
+                        img_stream = io.BytesIO(uploaded_orbital.read())
+                        st.image(img_stream)
+                        img_stream.seek(0)
+                        from docx.shared import Inches
+                        st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
+                        st.success("업로드한 이미지가 워드에 추가되었습니다!")
+                    else:
+                        st.error("이미지를 업로드해주세요.")
+            else:
+                label = "분자 오비탈 선택:" if orbital_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+                orbital_choice_raw = st.selectbox(label, orbital_options, key="orbital_choice_select", on_change=on_orbital_choice_change)
+        
+                if orbital_mode == "자동 (프리셋 선택)":
+                    orbital_choice = orbital_choice_raw
+                else:
+                    orbital_choice = "직접 입력 (Custom)"
+        
+                custom_orbital_data = ""
+                if orbital_choice == "직접 입력 (Custom)":
+                    if "custom_orbital_data_val" not in st.session_state:
+                        st.session_state.custom_orbital_data_val = "ATOM, N, 0, 0, 0"
+                    custom_orbital_data = st.text_area("수동 입력 (형식: 명령어, 속성...)", value=st.session_state.custom_orbital_data_val, key=f"custom_orbital_data_val_{st.session_state.orbital_text_key_counter}", height=150, help="명령어: ATOM(이름,x,y,z), BOND(x1,y1,z1,x2,y2,z2), PZ(x,y,z,색상,라벨), SP2(x,y,z,각도,색상,라벨), S(x,y,z,색상,라벨)")
+                    st.session_state.custom_orbital_data_val = custom_orbital_data
+        
+                if st.button("오비탈 그리기"):
+                    img_stream, errors = draw_orbital_diagram(orbital_choice, custom_orbital_data)
+                    if errors:
+                        for er in errors: st.error(er)
+                    img_stream.seek(0)
                     st.image(img_stream)
                     img_stream.seek(0)
                     from docx.shared import Inches
                     st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                    st.success("업로드한 이미지가 워드에 추가되었습니다!")
-                else:
-                    st.error("이미지를 업로드해주세요.")
-        else:
-            label = "분자 오비탈 선택:" if orbital_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-            orbital_choice_raw = st.selectbox(label, orbital_options, key="orbital_choice_select", on_change=on_orbital_choice_change)
+                    st.success(f"{orbital_choice} 오비탈 그림이 추가되었습니다!")
     
-            if orbital_mode == "자동 (프리셋 선택)":
-                orbital_choice = orbital_choice_raw
+        with col2:
+            st.subheader("3. 분자 구조식")
+            mol_mode = st.radio("생성 모드:", ["PubChem 자동 검색", "수동 (직접 입력)"], horizontal=True, key="mol_mode_radio")
+    
+            if mol_mode == "PubChem 자동 검색":
+                st.markdown("💡 **자주 검색하는 분자 예시:**")
+                st.caption("아래 이름을 복사해 입력창에 넣거나, 쉼표(,)로 연결해서 검색하세요.")
+                st.code("aspirin, benzene, caffeine, glucose, ethanol, water, methane, sulfuric acid, penicillin, acetaminophen", language="text")
+                mol_name = st.text_input("분자 이름 또는 식 입력:", help="예: aspirin, benzene, C4H8, H2O", key="mol_name_input")
+                if st.button("구조식 그리기 (자동)"):
+                    if mol_name:
+                        names = [n.strip() for n in mol_name.split(',')]
+                        for name in names[:4]:
+                            if not name: continue
+                            img_stream = get_molecule_image(name)
+                            if img_stream:
+                                img_stream.seek(0)
+                                st.image(img_stream, caption=name)
+                                st.session_state.word_doc.add_paragraph(f"[{name}] 구조식")
+                                img_stream.seek(0)
+                                st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
             else:
-                orbital_choice = "직접 입력 (Custom)"
+                if "custom_mol_data_val" not in st.session_state:
+                    st.session_state.custom_mol_data_val = "TEXT, $C_6H_{12}O_6$, 0, 1.5, 24, black\nLINE, 0, 1, 1, 0.5, 2, black"
+                custom_mol_data = st.text_area("구조식 수동 입력:", value=st.session_state.custom_mol_data_val, key="custom_mol_data_val", height=150)
+                if st.button("구조식 그리기 (수동)"):
+                    img_stream, errors = draw_skeletal_structure("직접 입력 (Custom)", custom_mol_data)
+                    if errors:
+                        for er in errors: st.error(er)
+                    img_stream.seek(0)
+                    st.image(img_stream)
+                    img_stream.seek(0)
+                    st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
     
-            custom_orbital_data = ""
-            if orbital_choice == "직접 입력 (Custom)":
-                if "custom_orbital_data_val" not in st.session_state:
-                    st.session_state.custom_orbital_data_val = "ATOM, N, 0, 0, 0"
-                custom_orbital_data = st.text_area("수동 입력 (형식: 명령어, 속성...)", value=st.session_state.custom_orbital_data_val, key=f"custom_orbital_data_val_{st.session_state.orbital_text_key_counter}", height=150, help="명령어: ATOM(이름,x,y,z), BOND(x1,y1,z1,x2,y2,z2), PZ(x,y,z,색상,라벨), SP2(x,y,z,각도,색상,라벨), S(x,y,z,색상,라벨)")
-                st.session_state.custom_orbital_data_val = custom_orbital_data
+            st.markdown("---")
+            up_mol = st.file_uploader("📂 분자 구조식 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_mol")
+            if up_mol and st.button("워드에 수동 추가 (구조식)"):
+                up_mol.seek(0)
+                st.image(up_mol)
+                up_mol.seek(0)
+                st.session_state.word_doc.add_picture(up_mol, width=Inches(3.0))
+                st.success("워드에 추가되었습니다!")
     
-            if st.button("오비탈 그리기"):
-                img_stream, errors = draw_orbital_diagram(orbital_choice, custom_orbital_data)
-                if errors:
-                    for er in errors: st.error(er)
-                img_stream.seek(0)
-                st.image(img_stream)
-                img_stream.seek(0)
-                from docx.shared import Inches
-                st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                st.success(f"{orbital_choice} 오비탈 그림이 추가되었습니다!")
-
-    with col2:
-        st.subheader("3. 분자 구조식")
-        mol_mode = st.radio("생성 모드:", ["PubChem 자동 검색", "수동 (직접 입력)"], horizontal=True, key="mol_mode_radio")
-
-        if mol_mode == "PubChem 자동 검색":
-            st.markdown("💡 **자주 검색하는 분자 예시:**")
-            st.caption("아래 이름을 복사해 입력창에 넣거나, 쉼표(,)로 연결해서 검색하세요.")
-            st.code("aspirin, benzene, caffeine, glucose, ethanol, water, methane, sulfuric acid, penicillin, acetaminophen", language="text")
-            mol_name = st.text_input("분자 이름 또는 식 입력:", help="예: aspirin, benzene, C4H8, H2O", key="mol_name_input")
-            if st.button("구조식 그리기 (자동)"):
-                if mol_name:
-                    names = [n.strip() for n in mol_name.split(',')]
-                    for name in names[:4]:
-                        if not name: continue
-                        img_stream = get_molecule_image(name)
-                        if img_stream:
-                            img_stream.seek(0)
-                            st.image(img_stream, caption=name)
-                            st.session_state.word_doc.add_paragraph(f"[{name}] 구조식")
-                            img_stream.seek(0)
-                            st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-        else:
-            if "custom_mol_data_val" not in st.session_state:
-                st.session_state.custom_mol_data_val = "TEXT, $C_6H_{12}O_6$, 0, 1.5, 24, black\nLINE, 0, 1, 1, 0.5, 2, black"
-            if st.button("구조식 그리기 (수동)"):
-                img_stream, errors = draw_skeletal_structure("직접 입력 (Custom)", custom_mol_data)
-                if errors:
-                    for er in errors: st.error(er)
-                img_stream.seek(0)
-                st.image(img_stream)
-                img_stream.seek(0)
-                st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-
-        st.markdown("---")
-        up_mol = st.file_uploader("📂 분자 구조식 이미지 수동 업로드", type=["png", "jpg", "jpeg"], key="up_mol")
-        if up_mol and st.button("워드에 수동 추가 (구조식)"):
-            up_mol.seek(0)
-            st.image(up_mol)
-            up_mol.seek(0)
-            st.session_state.word_doc.add_picture(up_mol, width=Inches(3.0))
-            st.success("워드에 추가되었습니다!")
-
-        st.markdown("---")
-        st.subheader("4. 루이스 전자점식 (Lewis Structure)")
-        lewis_options = ["H2O (물)", "CO2 (이산화탄소)", "NH3 (암모니아)", "CH4 (메테인)", "O2 (산소 분자)", "N2 (질소 분자)", "HCl (염화수소)", "HCN (사이안화수소)", "C2H4 (에텐)"]
-        def on_lewis_choice_change():
-            if st.session_state.lewis_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_lewis_data_val = get_preset_custom_data("lewis", st.session_state.get("lewis_choice_select", ""))
-                st.session_state.lewis_text_key_counter += 1
-
-        def sync_lewis_mode():
-            if st.session_state.lewis_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_lewis_data_val = get_preset_custom_data("lewis", st.session_state.get("lewis_choice_select", ""))
-                st.session_state.lewis_text_key_counter += 1
-
-        lewis_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="lewis_mode_radio", on_change=sync_lewis_mode)
-
-        if lewis_mode == "이미지 직접 업로드":
-            uploaded_lewis = st.file_uploader("루이스 전자점식 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="lewis_upload")
-            if st.button("업로드한 이미지 워드에 추가", key="lewis_upload_btn"):
-                if uploaded_lewis is not None:
-                    import io
-                    img_stream = io.BytesIO(uploaded_lewis.read())
+            st.markdown("---")
+            st.subheader("4. 루이스 전자점식 (Lewis Structure)")
+            lewis_options = ["H2O (물)", "CO2 (이산화탄소)", "NH3 (암모니아)", "CH4 (메테인)", "O2 (산소 분자)", "N2 (질소 분자)", "HCl (염화수소)", "HCN (사이안화수소)", "C2H4 (에텐)"]
+            def on_lewis_choice_change():
+                if st.session_state.lewis_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_lewis_data_val = get_preset_custom_data("lewis", st.session_state.get("lewis_choice_select", ""))
+                    st.session_state.lewis_text_key_counter += 1
+    
+            def sync_lewis_mode():
+                if st.session_state.lewis_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_lewis_data_val = get_preset_custom_data("lewis", st.session_state.get("lewis_choice_select", ""))
+                    st.session_state.lewis_text_key_counter += 1
+    
+            lewis_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="lewis_mode_radio", on_change=sync_lewis_mode)
+    
+            if lewis_mode == "이미지 직접 업로드":
+                uploaded_lewis = st.file_uploader("루이스 전자점식 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="lewis_upload")
+                if st.button("업로드한 이미지 워드에 추가", key="lewis_upload_btn"):
+                    if uploaded_lewis is not None:
+                        import io
+                        img_stream = io.BytesIO(uploaded_lewis.read())
+                        st.image(img_stream)
+                        img_stream.seek(0)
+                        from docx.shared import Inches
+                        st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
+                        st.success("업로드한 이미지가 워드에 추가되었습니다!")
+                    else:
+                        st.error("이미지를 업로드해주세요.")
+            else:
+                label = "분자 선택:" if lewis_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+                lewis_choice_raw = st.selectbox(label, lewis_options, key="lewis_choice_select", on_change=on_lewis_choice_change)
+        
+                if lewis_mode == "자동 (프리셋 선택)":
+                    lewis_choice = lewis_choice_raw
+                else:
+                    lewis_choice = "직접 입력 (Custom)"
+        
+                custom_lewis_data = ""
+                if lewis_choice == "직접 입력 (Custom)":
+                    if "custom_lewis_data_val" not in st.session_state:
+                        st.session_state.custom_lewis_data_val = "TEXT, O, 0.5, 0.5, 36, blue"
+                    custom_lewis_data = st.text_area("루이스 수동 입력:", value=st.session_state.custom_lewis_data_val, key=f"custom_lewis_data_val_{st.session_state.lewis_text_key_counter}", height=150, help="TEXT, LINE, DOTS(x,y,dx,dy) 명령어를 사용합니다.")
+                    st.session_state.custom_lewis_data_val = custom_lewis_data
+        
+                if st.button("루이스 구조식 그리기"):
+                    img_stream, errors = draw_lewis_structure(lewis_choice, custom_lewis_data)
+                    if errors:
+                        for er in errors: st.error(er)
+                    img_stream.seek(0)
                     st.image(img_stream)
                     img_stream.seek(0)
                     from docx.shared import Inches
                     st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-                    st.success("업로드한 이미지가 워드에 추가되었습니다!")
-                else:
-                    st.error("이미지를 업로드해주세요.")
-        else:
-            label = "분자 선택:" if lewis_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-            lewis_choice_raw = st.selectbox(label, lewis_options, key="lewis_choice_select", on_change=on_lewis_choice_change)
+                    st.success(f"{lewis_choice} 루이스 구조식이 추가되었습니다!")
     
-            if lewis_mode == "자동 (프리셋 선택)":
-                lewis_choice = lewis_choice_raw
+            st.markdown("---")
+            st.subheader("5. 기본 도식 및 기하 도형")
+            shape_options = ["정사각형 (Square)", "원형 (Circle)", "다각형 (Polygon)", "정육면체 (Cube)"]
+            def on_shape_choice_change():
+                if st.session_state.shape_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_shape_data_val = get_preset_custom_data("shape", st.session_state.get("shape_choice_select", ""))
+                    st.session_state.shape_text_key_counter += 1
+    
+            def sync_shape_mode():
+                if st.session_state.shape_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_shape_data_val = get_preset_custom_data("shape", st.session_state.get("shape_choice_select", ""))
+                    st.session_state.shape_text_key_counter += 1
+    
+            shape_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="shape_mode_radio", on_change=sync_shape_mode)
+    
+            if shape_mode == "이미지 직접 업로드":
+                uploaded_shape = st.file_uploader("도식 및 기하 도형 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="shape_upload")
+                if st.button("업로드한 이미지 워드에 추가", key="shape_upload_btn"):
+                    if uploaded_shape is not None:
+                        import io
+                        img_stream = io.BytesIO(uploaded_shape.read())
+                        st.image(img_stream)
+                        img_stream.seek(0)
+                        from docx.shared import Inches
+                        st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
+                        st.success("업로드한 이미지가 워드에 추가되었습니다!")
+                    else:
+                        st.error("이미지를 업로드해주세요.")
             else:
-                lewis_choice = "직접 입력 (Custom)"
-    
-            custom_lewis_data = ""
-            if lewis_choice == "직접 입력 (Custom)":
-                if "custom_lewis_data_val" not in st.session_state:
-                    st.session_state.custom_lewis_data_val = "TEXT, O, 0.5, 0.5, 36, blue"
-                custom_lewis_data = st.text_area("루이스 수동 입력:", value=st.session_state.custom_lewis_data_val, key=f"custom_lewis_data_val_{st.session_state.lewis_text_key_counter}", height=150, help="TEXT, LINE, DOTS(x,y,dx,dy) 명령어를 사용합니다.")
-                st.session_state.custom_lewis_data_val = custom_lewis_data
-    
-            if st.button("루이스 구조식 그리기"):
-                img_stream, errors = draw_lewis_structure(lewis_choice, custom_lewis_data)
-                if errors:
-                    for er in errors: st.error(er)
-                img_stream.seek(0)
-                st.image(img_stream)
-                img_stream.seek(0)
-                from docx.shared import Inches
-                st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-                st.success(f"{lewis_choice} 루이스 구조식이 추가되었습니다!")
-
-        st.markdown("---")
-        st.subheader("5. 기본 도식 및 기하 도형")
-        shape_options = ["정사각형 (Square)", "원형 (Circle)", "다각형 (Polygon)", "정육면체 (Cube)"]
-        def on_shape_choice_change():
-            if st.session_state.shape_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_shape_data_val = get_preset_custom_data("shape", st.session_state.get("shape_choice_select", ""))
-                st.session_state.shape_text_key_counter += 1
-
-        def sync_shape_mode():
-            if st.session_state.shape_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_shape_data_val = get_preset_custom_data("shape", st.session_state.get("shape_choice_select", ""))
-                st.session_state.shape_text_key_counter += 1
-
-        shape_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="shape_mode_radio", on_change=sync_shape_mode)
-
-        if shape_mode == "이미지 직접 업로드":
-            uploaded_shape = st.file_uploader("도식 및 기하 도형 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="shape_upload")
-            if st.button("업로드한 이미지 워드에 추가", key="shape_upload_btn"):
-                if uploaded_shape is not None:
-                    import io
-                    img_stream = io.BytesIO(uploaded_shape.read())
+                label = "도형 선택:" if shape_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+                shape_choice_raw = st.selectbox(label, shape_options, key="shape_choice_select", on_change=on_shape_choice_change)
+        
+                if shape_mode == "자동 (프리셋 선택)":
+                    shape_choice = shape_choice_raw
+                else:
+                    shape_choice = "직접 입력 (Custom)"
+        
+                custom_shape_data = ""
+                shape_color = "#2E5BFF"
+                kwargs = {}
+        
+                if shape_choice == "직접 입력 (Custom)":
+                    if "custom_shape_data_val" not in st.session_state:
+                        st.session_state.custom_shape_data_val = "RECT, 0.1, 0.1, 0.8, 0.8, #2E5BFF"
+                    custom_shape_data = st.text_area("수동 입력 (형식: 명령어, 속성...):", value=st.session_state.custom_shape_data_val, key=f"custom_shape_data_val_{st.session_state.shape_text_key_counter}", height=150, help="명령어: RECT(x,y,w,h,색상), CIRCLE(x,y,r,색상), TEXT(내용,x,y,크기,색상), LINE(x1,y1,x2,y2,색상)")
+                    st.session_state.custom_shape_data_val = custom_shape_data
+                else:
+                    shape_color = st.color_picker("색상 선택:", "#2E5BFF")
+                    if shape_choice == "정사각형 (Square)":
+                        c1, c2 = st.columns(2)
+                        kwargs['width'] = c1.slider("가로 길이", 0.1, 1.0, 0.8, 0.1)
+                        kwargs['height'] = c2.slider("세로 길이", 0.1, 1.0, 0.8, 0.1)
+                    elif shape_choice == "원형 (Circle)":
+                        kwargs['radius'] = st.slider("반지름 크기", 0.1, 0.5, 0.4, 0.05)
+                    elif shape_choice == "다각형 (Polygon)":
+                        kwargs['n_sides'] = st.slider("꼭짓점 개수 (N각형)", 3, 12, 6, 1)
+                    elif shape_choice == "정육면체 (Cube)":
+                        c1, c2, c3 = st.columns(3)
+                        kwargs['length'] = c1.slider("가로 길이 (x)", 0.5, 3.0, 1.0, 0.1)
+                        kwargs['width'] = c2.slider("세로 길이 (y)", 0.5, 3.0, 1.0, 0.1)
+                        kwargs['height'] = c3.slider("높이 (z)", 0.5, 3.0, 1.0, 0.1)
+        
+                if st.button("도형 그리기"):
+                    img_stream, errors = draw_schematic(shape_choice, shape_color, custom_shape_data, **kwargs)
+                    if errors:
+                        for er in errors: st.error(er)
+                    img_stream.seek(0)
                     st.image(img_stream)
                     img_stream.seek(0)
                     from docx.shared import Inches
                     st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-                    st.success("업로드한 이미지가 워드에 추가되었습니다!")
+                    st.success("워드에 도형이 추가되었습니다!")
+    
+            st.markdown("---")
+            st.subheader("7. 2D 분자 구조 / 선구조식 (수동 지원)")
+            skeletal_options = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
+            def on_skeletal_choice_change():
+                if st.session_state.skeletal_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_skeletal_data_val = get_preset_custom_data("skeletal", st.session_state.get("skeletal_choice_select", ""))
+                    st.session_state.skeletal_text_key_counter += 1
+    
+            def sync_skeletal_mode():
+                if st.session_state.skeletal_mode_radio == "수동 (직접 입력)":
+                    st.session_state.custom_skeletal_data_val = get_preset_custom_data("skeletal", st.session_state.get("skeletal_choice_select", ""))
+                    st.session_state.skeletal_text_key_counter += 1
+    
+            skeletal_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="skeletal_mode_radio", on_change=sync_skeletal_mode)
+    
+            if skeletal_mode == "이미지 직접 업로드":
+                uploaded_skeletal = st.file_uploader("2D 분자 구조 / 선구조식 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="skeletal_upload")
+                if st.button("업로드한 이미지 워드에 추가", key="skeletal_upload_btn"):
+                    if uploaded_skeletal is not None:
+                        import io
+                        img_stream = io.BytesIO(uploaded_skeletal.read())
+                        st.image(img_stream)
+                        img_stream.seek(0)
+                        from docx.shared import Inches
+                        st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
+                        st.success("업로드한 이미지가 워드에 추가되었습니다!")
+                    else:
+                        st.error("이미지를 업로드해주세요.")
+            else:
+                label = "분자 선택:" if skeletal_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워질 것입니다):"
+                skeletal_choice_raw = st.selectbox(label, skeletal_options, key="skeletal_choice_select", on_change=on_skeletal_choice_change)
+        
+                if skeletal_mode == "자동 (프리셋 선택)":
+                    skeletal_choice = skeletal_choice_raw
                 else:
-                    st.error("이미지를 업로드해주세요.")
-        else:
-            label = "도형 선택:" if shape_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-            shape_choice_raw = st.selectbox(label, shape_options, key="shape_choice_select", on_change=on_shape_choice_change)
-    
-            if shape_mode == "자동 (프리셋 선택)":
-                shape_choice = shape_choice_raw
-            else:
-                shape_choice = "직접 입력 (Custom)"
-    
-            custom_shape_data = ""
-            shape_color = "#2E5BFF"
-            kwargs = {}
-    
-            if shape_choice == "직접 입력 (Custom)":
-                if "custom_shape_data_val" not in st.session_state:
-                    st.session_state.custom_shape_data_val = "RECT, 0.1, 0.1, 0.8, 0.8, #2E5BFF"
-                custom_shape_data = st.text_area("수동 입력 (형식: 명령어, 속성...):", value=st.session_state.custom_shape_data_val, key=f"custom_shape_data_val_{st.session_state.shape_text_key_counter}", height=150, help="명령어: RECT(x,y,w,h,색상), CIRCLE(x,y,r,색상), TEXT(내용,x,y,크기,색상), LINE(x1,y1,x2,y2,색상)")
-                st.session_state.custom_shape_data_val = custom_shape_data
-            else:
-                shape_color = st.color_picker("색상 선택:", "#2E5BFF")
-                if shape_choice == "정사각형 (Square)":
-                    c1, c2 = st.columns(2)
-                    kwargs['width'] = c1.slider("가로 길이", 0.1, 1.0, 0.8, 0.1)
-                    kwargs['height'] = c2.slider("세로 길이", 0.1, 1.0, 0.8, 0.1)
-                elif shape_choice == "원형 (Circle)":
-                    kwargs['radius'] = st.slider("반지름 크기", 0.1, 0.5, 0.4, 0.05)
-                elif shape_choice == "다각형 (Polygon)":
-                    kwargs['n_sides'] = st.slider("꼭짓점 개수 (N각형)", 3, 12, 6, 1)
-                elif shape_choice == "정육면체 (Cube)":
-                    c1, c2, c3 = st.columns(3)
-                    kwargs['length'] = c1.slider("가로 길이 (x)", 0.5, 3.0, 1.0, 0.1)
-                    kwargs['width'] = c2.slider("세로 길이 (y)", 0.5, 3.0, 1.0, 0.1)
-                    kwargs['height'] = c3.slider("높이 (z)", 0.5, 3.0, 1.0, 0.1)
-    
-            if st.button("도형 그리기"):
-                img_stream, errors = draw_schematic(shape_choice, shape_color, custom_shape_data, **kwargs)
-                if errors:
-                    for er in errors: st.error(er)
-                img_stream.seek(0)
-                st.image(img_stream)
-                img_stream.seek(0)
-                from docx.shared import Inches
-                st.session_state.word_doc.add_picture(img_stream, width=Inches(3.0))
-                st.success("워드에 도형이 추가되었습니다!")
-
-        st.markdown("---")
-        st.subheader("7. 2D 분자 구조 / 선구조식 (수동 지원)")
-        skeletal_options = ["Butane (뷰테인)", "Hexane (헥세인)", "Cyclohexane (사이클로헥세인)", "Benzene (벤젠)", "Acetone (아세톤)", "Acetic Acid (아세트산)"]
-        def on_skeletal_choice_change():
-            if st.session_state.skeletal_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_skeletal_data_val = get_preset_custom_data("skeletal", st.session_state.get("skeletal_choice_select", ""))
-                st.session_state.skeletal_text_key_counter += 1
-
-        def sync_skeletal_mode():
-            if st.session_state.skeletal_mode_radio == "수동 (직접 입력)":
-                st.session_state.custom_skeletal_data_val = get_preset_custom_data("skeletal", st.session_state.get("skeletal_choice_select", ""))
-                st.session_state.skeletal_text_key_counter += 1
-
-        skeletal_mode = st.radio("생성 모드:", ["자동 (프리셋 선택)", "수동 (직접 입력)", "이미지 직접 업로드"], horizontal=True, key="skeletal_mode_radio", on_change=sync_skeletal_mode)
-
-        if skeletal_mode == "이미지 직접 업로드":
-            uploaded_skeletal = st.file_uploader("2D 분자 구조 / 선구조식 이미지 파일 업로드", type=["png", "jpg", "jpeg"], key="skeletal_upload")
-            if st.button("업로드한 이미지 워드에 추가", key="skeletal_upload_btn"):
-                if uploaded_skeletal is not None:
-                    import io
-                    img_stream = io.BytesIO(uploaded_skeletal.read())
+                    skeletal_choice = "직접 입력 (Custom)"
+        
+                custom_skeletal_data = ""
+                if skeletal_choice == "직접 입력 (Custom)":
+                    if "custom_skeletal_data_val" not in st.session_state:
+                        st.session_state.custom_skeletal_data_val = "CANVAS, 8, 4"
+                    custom_skeletal_data = st.text_area(
+                        "수동 입력 (형식: 명령어, 속성...)",
+                        key="custom_skeletal_data_val",
+                        height=350,
+                        help="명령어: CANVAS(너비,높이), TEXT/LTEXT/RTEXT(텍스트,x,y,크기,색상), LINE(x1,y1,x2,y2,두께,색상), DLINE(이중결합x1,y1,x2,y2,두께,색상), ARROW(x1,y1,x2,y2,색상), DOTS(점1x,점1y,점2x,점2y,색상), BALL(x,y,반지름,색상)."
+                    )
+        
+                if st.button("분자 구조식 그리기"):
+                    img_stream, errors = draw_skeletal_structure(skeletal_choice, custom_skeletal_data)
+                    if errors:
+                        for er in errors:
+                            st.error(f"오류: {er}")
+                    img_stream.seek(0)
                     st.image(img_stream)
                     img_stream.seek(0)
                     from docx.shared import Inches
                     st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                    st.success("업로드한 이미지가 워드에 추가되었습니다!")
-                else:
-                    st.error("이미지를 업로드해주세요.")
-        else:
-            label = "분자 선택:" if skeletal_mode == "자동 (프리셋 선택)" else "시작 템플릿 불러오기 (변경 시 아래 코드가 덮어씌워집니다):"
-            skeletal_choice_raw = st.selectbox(label, skeletal_options, key="skeletal_choice_select", on_change=on_skeletal_choice_change)
+                    st.info("💡 **Tip:** 수동 입력창에서 줄바꿈은 `Enter`를, 입력 완료 및 적용은 `Ctrl+Enter`를 사용하세요.")
+                    st.success(f"{skeletal_choice} 구조식이 추가되었습니다!")
     
-            if skeletal_mode == "자동 (프리셋 선택)":
-                skeletal_choice = skeletal_choice_raw
-            else:
-                skeletal_choice = "직접 입력 (Custom)"
+        if st.button("🚀 누적된 모든 도표/그림 워드로 변환하기", type="primary", use_container_width=True):
+            doc_stream = io.BytesIO()
+            st.session_state.word_doc.save(doc_stream)
+            st.session_state.diagram_docx_bytes = doc_stream.getvalue()
+            st.success("✅ 모든 도표가 워드 파일로 변환되었습니다! 아래에서 다운로드하세요.")
     
-            custom_skeletal_data = ""
-            if skeletal_choice == "직접 입력 (Custom)":
-                if "custom_skeletal_data_val" not in st.session_state:
-                    st.session_state.custom_skeletal_data_val = "CANVAS, 8, 4"
-                custom_skeletal_data = st.text_area(
-                    "수동 입력 (형식: 명령어, 속성...)",
-                    key="custom_skeletal_data_val",
-                    height=350,
-                    help="명령어: CANVAS(너비,높이), TEXT/LTEXT/RTEXT(텍스트,x,y,크기,색상), LINE(x1,y1,x2,y2,두께,색상), DLINE(이중결합x1,y1,x2,y2,두께,색상), ARROW(x1,y1,x2,y2,색상), DOTS(점1x,점1y,점2x,점2y,색상), BALL(x,y,반지름,색상)."
-                )
+        if st.session_state.get("diagram_docx_bytes"):
+            render_download_and_open_buttons("도표/그림 모음", st.session_state.diagram_docx_bytes, "Diagrams.docx", "diagrams")
     
-            if st.button("분자 구조식 그리기"):
-                img_stream, errors = draw_skeletal_structure(skeletal_choice, custom_skeletal_data)
-                if errors:
-                    for er in errors:
-                        st.error(f"오류: {er}")
-                img_stream.seek(0)
-                st.image(img_stream)
-                img_stream.seek(0)
-                from docx.shared import Inches
-                st.session_state.word_doc.add_picture(img_stream, width=Inches(4.0))
-                st.info("💡 **Tip:** 수동 입력창에서 줄바꿈은 `Enter`를, 입력 완료 및 적용은 `Ctrl+Enter`를 사용하세요.")
-                st.success(f"{skeletal_choice} 구조식이 추가되었습니다!")
-
-    doc_stream = io.BytesIO()
-    st.session_state.word_doc.save(doc_stream)
-    
-    if st.button("🚀 누적된 모든 도표/그림 워드로 변환하기", type="primary", use_container_width=True):
-        doc_stream = io.BytesIO()
-        st.session_state.word_doc.save(doc_stream)
-        st.session_state.diagram_docx_bytes = doc_stream.getvalue()
-        st.success("✅ 모든 도표가 워드 파일로 변환되었습니다! 아래에서 다운로드하세요.")
-
-    if st.session_state.get("diagram_docx_bytes"):
-        render_download_and_open_buttons("도표/그림 모음", st.session_state.diagram_docx_bytes, "Diagrams.docx", "diagrams")
-
-    st.markdown("---")
+        st.markdown("---")
+        st.markdown("---")
     st.subheader("🎨 통합 수기 도표 보드 (그림판)")
     st.markdown("아이콘을 선택하고 캔버스에 직접 도표나 그림을 수기로 그려보세요. AI가 형태를 인식해 깔끔한 프로그래밍 이미지로 변환 후 워드에 추가합니다.")
 
     try:
-        # streamlit-drawable-canvas + 최신 Streamlit(1.30+) 호환성 패치
-        import streamlit.elements.image as st_image
-        if not hasattr(st_image, 'image_to_url'):
-            def patched_image_to_url(image, *args, **kwargs):
-                import io
-                import base64
-                buf = io.BytesIO()
-                image.save(buf, format="PNG")
-                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-                return f"data:image/png;base64,{b64}"
-            st_image.image_to_url = patched_image_to_url
-
         from streamlit_drawable_canvas import st_canvas
         canvas_supported = True
     except ImportError:
@@ -5103,7 +5111,8 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                         st.session_state["canvas_tool_index"] = 4 # 자동으로 '이동/크기조절' 도구 선택
                         import uuid
                         st.session_state["canvas_key_id"] = "canvas_" + str(uuid.uuid4())
-                        st.success(f"✅ '{val}' 도표가 [편집 가능한 조각(벡터)] 형태로 캔버스로 불러와졌습니다! 이제 원자나 결합 선을 마우스로 잡고 이동하거나 형태를 변형해 보세요.")
+                        st.session_state["canvas_success_msg"] = f"✅ '{val}' 도표가 [편집 가능한 조각(벡터)] 형태로 불러와졌습니다!"
+                        st.rerun()
                 elif val == "PhET":
                     st.session_state["show_phet_iframe"] = True
                     st.success("✅ 대화형 3D 분자 조립기(PhET)가 열렸습니다. 마우스로 분자를 직접 조립하고 입체적으로 돌려보세요!")
@@ -5126,9 +5135,11 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                     if p_stream:
                         from PIL import Image
                         st.session_state["global_canvas_bg"] = Image.open(p_stream).copy()
+                        st.session_state.pop("canvas_initial_drawing", None) # 이미지 방식이므로 벡터 데이터 초기화
                         import uuid
                         st.session_state["canvas_key_id"] = "canvas_" + str(uuid.uuid4())
-                        st.success(f"✅ '{val}' 도표가 캔버스로 불러와졌습니다! 이제 아래 캔버스에서 수기로 수정해 보세요.")
+                        st.session_state["canvas_success_msg"] = f"✅ '{val}' 도표가 배경(이미지)으로 불러와졌습니다!"
+                        st.rerun()
         
         save_canvas_btn = False
         ai_transform_btn = False
@@ -5141,6 +5152,9 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
                 st.session_state.pop("show_phet_iframe", None)
                 st.rerun()
         else:
+            if "canvas_success_msg" in st.session_state:
+                st.success(st.session_state.pop("canvas_success_msg"))
+            
             col_c1, col_c2 = st.columns([1, 4])
             with col_c1:
                 stroke_width = st.slider("펜 굵기", 1, 15, 3)
