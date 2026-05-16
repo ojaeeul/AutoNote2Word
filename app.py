@@ -2674,6 +2674,8 @@ if menu == "📓 Notion / MS Word 스타일 매니저 (추천)":
                 g_ylabel = st.text_input("📝 표의 Y열 이름 / Y축 라벨 변경", "")
                 if "3D" in g_type:
                     g_zlabel = st.text_input("📝 표의 Z열 이름 / Z축 라벨 변경", "")
+                elif "이중선" in g_type or "이중 적정" in g_type:
+                    g_zlabel = st.text_input("📝 표의 Y2열 이름 / 대조군 라벨 변경", "")
 
             with g_col2:
                 st.caption("그래프에 표시할 데이터를 입력하세요. 3D 차트는 X, Y, Z 세 열이 필요합니다. **(행 삭제: 우측 상단 🗑️ 클릭)**")
@@ -4908,6 +4910,18 @@ elif menu == "🧪 도표 & 3D 그림 생성기 / 80페이지+ 초정밀 분석"
     st.markdown("아이콘을 선택하고 캔버스에 직접 도표나 그림을 수기로 그려보세요. AI가 형태를 인식해 깔끔한 프로그래밍 이미지로 변환 후 워드에 추가합니다.")
 
     try:
+        # streamlit-drawable-canvas + 최신 Streamlit(1.30+) 호환성 패치
+        import streamlit.elements.image as st_image
+        if not hasattr(st_image, 'image_to_url'):
+            def patched_image_to_url(image, *args, **kwargs):
+                import io
+                import base64
+                buf = io.BytesIO()
+                image.save(buf, format="PNG")
+                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return f"data:image/png;base64,{b64}"
+            st_image.image_to_url = patched_image_to_url
+
         from streamlit_drawable_canvas import st_canvas
         canvas_supported = True
     except ImportError:
